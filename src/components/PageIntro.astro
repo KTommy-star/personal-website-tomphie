@@ -15,7 +15,7 @@ const { title, description, accent = "path" } = Astro.props;
         {title}
       </h1>
       <div class="max-w-xl">
-        <span class:list={["mb-5 block size-3 rounded-full", accent === "memory" ? "bg-memory" : "bg-path"]}></span>
+        <span aria-hidden="true" class:list={["mb-5 block size-3 rounded-full", accent === "memory" ? "bg-memory" : "bg-path"]}></span>
         <p class="text-base leading-8 text-quiet sm:text-lg">{description}</p>
       </div>
     </div>

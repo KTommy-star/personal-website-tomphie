@@ -1,6 +1,7 @@
 ---
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
+import SeoHead from "../components/SeoHead.astro";
 import { site } from "../data/site";
 import "../styles/global.css";
 
@@ -15,7 +16,6 @@ const {
 } = Astro.props;
 
 const pageTitle = title === site.title ? title : `${title} · ${site.name}`;
-const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
 ---
 
 <!doctype html>
@@ -23,12 +23,10 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
     <meta name="theme-color" content="#f7f7f5" />
     <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
-    {canonical && <link rel="canonical" href={canonical} />}
-    <title>{pageTitle}</title>
+    <SeoHead title={pageTitle} description={description} />
   </head>
   <body>
     <a class="skip-link" href="#main-content">跳到主要内容</a>

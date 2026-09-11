@@ -33,9 +33,20 @@ npm run build
 - 内容与体验设计：`docs/superpowers/specs/2026-09-11-personal-website-content-experience-design.md`
 - 模块 0 实施计划：`docs/superpowers/plans/2026-09-11-site-foundation.md`
 - 内容提供指南：`docs/content-input-guide.md`
+- 隐私与发布边界：`docs/privacy-and-publishing.md`
 
 ## 当前范围
 
 当前完成的是模块 0 骨架。各栏目只呈现真实的建设说明，不包含虚构经历或示例成果。
 
-GitHub Pages 部署和最终 `site`、`base` 配置将在获得 GitHub 用户名、仓库名称和域名后，于模块 7 统一完成。
+## 发布到 GitHub Pages
+
+推送到 GitHub 仓库的 `main` 分支后，`.github/workflows/deploy.yml` 会自动构建并发布网站。首次发布时，需要在仓库的 **Settings → Pages** 中把 Source 设为 **GitHub Actions**。
+
+部署配置会自动识别仓库类型：
+
+- `用户名/用户名.github.io` 会发布在根路径；
+- 普通仓库会自动使用 `/仓库名` 作为子路径；
+- 使用自定义域名时，在仓库 Actions variables 中设置 `SITE_URL`，并把 `BASE_PATH` 设为 `/`。
+
+正式绑定域名时，再补充 DNS 和 `public/CNAME`；在确定真实域名前不写入占位地址。

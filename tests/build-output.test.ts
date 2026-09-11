@@ -20,6 +20,17 @@ describe("static routes", () => {
       );
       expect(html).toContain(heading);
       expect(html).toContain('id="main-content"');
+      expect(html).toContain('name="description"');
+      expect(html).toContain('property="og:title"');
     });
   }
+
+  it("publishes crawler guidance", async () => {
+    const robots = await readFile(
+      new URL("../dist/robots.txt", import.meta.url),
+      "utf8",
+    );
+    expect(robots).toContain("User-agent: *");
+    expect(robots).toContain("Allow: /");
+  });
 });
