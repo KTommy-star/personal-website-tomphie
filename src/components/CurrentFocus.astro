@@ -1,9 +1,10 @@
 ---
 import { profile } from "../data/profile";
+import BrandWord from "./BrandWord.astro";
 ---
 
-<section class="focus-section relative overflow-hidden bg-ink py-20 text-paper sm:py-24 lg:py-28" aria-labelledby="focus-title">
-  <div class="focus-word" aria-hidden="true">TOMPHIE</div>
+<section class="brand-scene focus-section relative overflow-hidden bg-ink py-20 text-paper sm:py-24 lg:py-28" aria-labelledby="focus-title">
+  <BrandWord placement="focus" />
 
   <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
     <div class="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,1.1fr)] lg:gap-16">
@@ -25,9 +26,9 @@ import { profile } from "../data/profile";
       <div>
         <p class="mb-4 text-sm text-paper/60">正在关注的研究方向</p>
         <ul class="border-t border-paper/20" role="list">
-          {profile.focuses.map((focus) => (
+          {profile.focuses.map((item) => (
             <li class="focus-item border-b border-paper/20 py-6 text-2xl font-semibold sm:py-7 sm:text-4xl">
-              {focus}
+              {item}
             </li>
           ))}
         </ul>
@@ -37,23 +38,6 @@ import { profile } from "../data/profile";
 </section>
 
 <style>
-  .focus-word {
-    position: absolute;
-    inset-block-end: -0.12em;
-    inset-inline-start: -0.08em;
-    color: transparent;
-    font-family: "Arial Black", "Helvetica Neue", sans-serif;
-    font-size: clamp(8rem, 22vw, 20rem);
-    font-weight: 900;
-    line-height: 0.75;
-    pointer-events: none;
-    user-select: none;
-    white-space: nowrap;
-    -webkit-text-stroke: 0.0625rem rgb(244 247 250 / 7%);
-    transform: scaleX(0.92) skewX(-9deg);
-    transform-origin: left bottom;
-  }
-
   .focus-item {
     transition:
       color 180ms ease-out,

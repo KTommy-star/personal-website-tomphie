@@ -1,9 +1,12 @@
 ---
 import { profile } from "../data/profile";
+import BrandWord from "./BrandWord.astro";
 ---
 
-<section class="border-y border-line py-20 sm:py-24 lg:py-28" aria-labelledby="story-title">
-  <div class="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(16rem,0.65fr)_minmax(0,1.35fr)] lg:gap-16 lg:px-10">
+<section class="brand-scene relative overflow-hidden border-y border-line py-20 sm:py-24 lg:py-28" aria-labelledby="story-title">
+  <BrandWord placement="story" />
+
+  <div class="relative z-10 mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(16rem,0.65fr)_minmax(0,1.35fr)] lg:gap-16 lg:px-10">
     <aside class="lg:sticky lg:top-28 lg:self-start" aria-label="人生坐标">
       <p class="text-sm font-semibold">我的坐标</p>
       <ol class="story-path relative mt-7 grid gap-7 pl-8" role="list">

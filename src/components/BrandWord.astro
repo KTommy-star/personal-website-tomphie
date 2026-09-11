@@ -1,0 +1,221 @@
+---
+type Placement = "hero" | "story" | "focus" | "routes" | "contact";
+
+interface Props {
+  placement: Placement;
+}
+
+const { placement } = Astro.props;
+const letters = [..."TOMPHIE"];
+---
+
+<div
+  class:list={["brand-word", `brand-word--${placement}`]}
+  aria-hidden="true"
+  data-brand-word="TOMPHIE"
+  data-brand-placement={placement}
+>
+  <div class="brand-word__motion">
+    <div class="brand-word__glyphs">
+      {letters.map((letter) => <span>{letter}</span>)}
+    </div>
+  </div>
+</div>
+
+<style>
+  .brand-word {
+    --brand-stroke: color-mix(in srgb, var(--color-path) 34%, transparent);
+    --matrix-rest: skewX(-8deg) scaleX(0.9);
+    --matrix-hover: skewX(-5deg) scaleX(0.92) translateX(0.018em);
+    --drift-start-x: -2rem;
+    --drift-start-y: 0;
+    --drift-end-x: 2rem;
+    --drift-end-y: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .brand-word__motion {
+    position: absolute;
+    width: max-content;
+  }
+
+  .brand-word__glyphs {
+    display: flex;
+    color: transparent;
+    font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.09em;
+    line-height: 0.72;
+    white-space: nowrap;
+    -webkit-text-stroke: clamp(0.1rem, 0.13vw, 0.16rem) var(--brand-stroke);
+    transform: var(--matrix-rest);
+    transform-origin: center;
+    transition:
+      transform 180ms ease-out,
+      opacity 180ms ease-out;
+  }
+
+  .brand-word__glyphs span {
+    display: inline-block;
+  }
+
+  .brand-word__glyphs span:nth-child(1) {
+    transform: translateY(0.08em) scaleY(0.9);
+  }
+
+  .brand-word__glyphs span:nth-child(2) {
+    transform: translateY(-0.03em) scaleX(0.82) scaleY(1.16);
+  }
+
+  .brand-word__glyphs span:nth-child(3) {
+    transform: translateY(-0.08em) skewX(-10deg) scaleY(1.08);
+  }
+
+  .brand-word__glyphs span:nth-child(4) {
+    transform: translateY(0.04em) scaleX(0.74);
+  }
+
+  .brand-word__glyphs span:nth-child(5) {
+    transform: translateY(0.09em) scaleY(1.12);
+  }
+
+  .brand-word__glyphs span:nth-child(6) {
+    transform: translateY(-0.05em) scaleX(0.58) scaleY(1.18);
+  }
+
+  .brand-word__glyphs span:nth-child(7) {
+    transform: translateY(-0.02em) skewX(7deg) scaleX(0.88);
+  }
+
+  :global(.brand-scene:hover) .brand-word__glyphs {
+    transform: var(--matrix-hover);
+  }
+
+  .brand-word--hero {
+    --brand-stroke: color-mix(in srgb, var(--color-path) 44%, transparent);
+  }
+
+  .brand-word--hero .brand-word__motion {
+    inset-block-start: 2rem;
+    inset-inline-start: -7vw;
+  }
+
+  .brand-word--hero .brand-word__glyphs {
+    font-size: clamp(9rem, 25vw, 25rem);
+  }
+
+  .brand-word--story {
+    --brand-stroke: color-mix(in srgb, var(--color-ink) 16%, transparent);
+    --matrix-rest: rotate(90deg) skewX(-7deg) scaleX(0.88);
+    --matrix-hover: rotate(90deg) skewX(-4deg) scaleX(0.9) translateX(0.018em);
+    --drift-start-x: 0;
+    --drift-start-y: -2rem;
+    --drift-end-x: 0;
+    --drift-end-y: 2rem;
+  }
+
+  .brand-word--story .brand-word__motion {
+    inset-block-start: 34%;
+    inset-inline-end: -30rem;
+  }
+
+  .brand-word--story .brand-word__glyphs {
+    font-size: clamp(9rem, 21vw, 20rem);
+  }
+
+  .brand-word--focus {
+    --brand-stroke: color-mix(in srgb, var(--color-paper) 22%, transparent);
+    --matrix-rest: skewX(-11deg) scaleX(0.94);
+    --matrix-hover: skewX(-7deg) scaleX(0.96) translateX(0.018em);
+    --drift-start-x: -3rem;
+    --drift-end-x: 3rem;
+  }
+
+  .brand-word--focus .brand-word__motion {
+    inset-block-start: 28%;
+    inset-inline-start: -12vw;
+  }
+
+  .brand-word--focus .brand-word__glyphs {
+    font-size: clamp(10rem, 24vw, 24rem);
+  }
+
+  .brand-word--routes {
+    --brand-stroke: color-mix(in srgb, var(--color-path) 18%, transparent);
+    --matrix-rest: skewX(10deg) scaleX(1.04);
+    --matrix-hover: skewX(6deg) scaleX(1.06) translateX(0.018em);
+    --drift-start-x: 0;
+    --drift-start-y: -2.5rem;
+    --drift-end-x: 0;
+    --drift-end-y: 2.5rem;
+  }
+
+  .brand-word--routes .brand-word__motion {
+    inset-block-start: 24%;
+    inset-inline-start: -38vw;
+  }
+
+  .brand-word--routes .brand-word__glyphs {
+    font-size: clamp(12rem, 28vw, 28rem);
+  }
+
+  .brand-word--contact {
+    --brand-stroke: color-mix(in srgb, var(--color-path) 30%, transparent);
+    --matrix-rest: skewX(-6deg) scaleX(0.86);
+    --matrix-hover: skewX(-3deg) scaleX(0.89) translateX(0.018em);
+  }
+
+  .brand-word--contact .brand-word__motion {
+    inset-block-end: 2rem;
+    inset-inline-start: -5vw;
+  }
+
+  .brand-word--contact .brand-word__glyphs {
+    font-size: clamp(9rem, 23vw, 23rem);
+  }
+
+  @supports (animation-timeline: view()) {
+    .brand-word__motion {
+      animation: brand-drift linear both;
+      animation-range: 0% 100%;
+      animation-timeline: scroll(root block);
+    }
+  }
+
+  @keyframes brand-drift {
+    from {
+      transform: translate3d(var(--drift-start-x), var(--drift-start-y), 0);
+    }
+
+    to {
+      transform: translate3d(var(--drift-end-x), var(--drift-end-y), 0);
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    .brand-word--story .brand-word__motion {
+      inset-block-start: 46%;
+      inset-inline-end: -23rem;
+    }
+
+    .brand-word--routes .brand-word__motion {
+      inset-inline-start: -64vw;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-word__motion {
+      animation: none;
+      transform: translate3d(0, 0, 0);
+    }
+
+    .brand-word__glyphs {
+      transition: none;
+    }
+  }
+</style>

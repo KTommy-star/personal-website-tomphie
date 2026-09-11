@@ -1,13 +1,16 @@
 ---
 import { navigation } from "../data/navigation";
 import { withBase } from "../lib/paths";
+import BrandWord from "./BrandWord.astro";
 
 const base = import.meta.env.BASE_URL;
 const destinations = navigation.filter((item) => item.href !== "/");
 ---
 
-<section class="route-index border-t border-line py-20 sm:py-24" aria-labelledby="route-index-title">
-  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+<section class="brand-scene route-index relative overflow-hidden border-t border-line py-20 sm:py-24" aria-labelledby="route-index-title">
+  <BrandWord placement="routes" />
+
+  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
     <div class="mb-12 grid gap-5 md:grid-cols-2 md:items-end">
       <h2 id="route-index-title" class="max-w-xl text-3xl font-semibold leading-tight sm:text-5xl">
         <span class="block">从一个坐标</span>

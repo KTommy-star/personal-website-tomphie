@@ -48,6 +48,19 @@ describe("static routes", () => {
     expect(html).not.toContain("/Users/kongsanjin");
   });
 
+  it("renders the TOMPHIE brand matrix across every homepage section", async () => {
+    const html = await readFile(
+      new URL("../dist/index.html", import.meta.url),
+      "utf8",
+    );
+
+    const placements = ["hero", "story", "focus", "routes", "contact"];
+    expect(html.match(/data-brand-word/g)).toHaveLength(placements.length);
+    for (const placement of placements) {
+      expect(html).toContain(`data-brand-placement="${placement}"`);
+    }
+  });
+
   it("publishes crawler guidance", async () => {
     const robots = await readFile(
       new URL("../dist/robots.txt", import.meta.url),

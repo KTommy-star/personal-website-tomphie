@@ -2,10 +2,11 @@
 import { Picture } from "astro:assets";
 import profilePhoto from "../assets/profile.jpg";
 import { profile } from "../data/profile";
+import BrandWord from "./BrandWord.astro";
 ---
 
-<section class="home-hero relative overflow-hidden pb-20 pt-12 sm:pb-24 sm:pt-16 lg:pb-28 lg:pt-20" aria-labelledby="home-title">
-  <div class="hero-word" aria-hidden="true"><span>TOMPHIE</span></div>
+<section class="brand-scene home-hero relative overflow-hidden pb-20 pt-12 sm:pb-24 sm:pt-16 lg:pb-28 lg:pt-20" aria-labelledby="home-title">
+  <BrandWord placement="hero" />
 
   <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
     <div class="hero-copy grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)] lg:items-end">
@@ -45,28 +46,6 @@ import { profile } from "../data/profile";
 </section>
 
 <style>
-  .hero-word {
-    position: absolute;
-    inset-block-start: 4.5rem;
-    inset-inline: 0;
-    overflow: hidden;
-    pointer-events: none;
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  .hero-word span {
-    display: block;
-    color: transparent;
-    font-family: "Arial Black", "Helvetica Neue", sans-serif;
-    font-size: clamp(7rem, 24vw, 22rem);
-    font-weight: 900;
-    line-height: 0.78;
-    -webkit-text-stroke: 0.0625rem rgb(23 72 210 / 18%);
-    transform: translateX(-5%) scaleX(0.84) skewX(-9deg);
-    transform-origin: center;
-  }
-
   .portrait-media {
     aspect-ratio: 4 / 5;
   }
@@ -81,14 +60,6 @@ import { profile } from "../data/profile";
   .portrait-media :global(img) {
     object-fit: cover;
     object-position: 39% center;
-  }
-
-  @supports (animation-timeline: view()) {
-    .hero-word span {
-      animation: word-drift linear both;
-      animation-range: entry 0% exit 100%;
-      animation-timeline: view();
-    }
   }
 
   @media (min-width: 40rem) {
@@ -116,23 +87,6 @@ import { profile } from "../data/profile";
     to {
       opacity: 1;
       transform: translateY(0);
-    }
-  }
-
-  @keyframes word-drift {
-    from {
-      transform: translateX(-7%) scaleX(0.84) skewX(-9deg);
-    }
-
-    to {
-      transform: translateX(3%) scaleX(0.84) skewX(-9deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hero-word span {
-      animation: none;
-      transform: translateX(-2%) scaleX(0.84) skewX(-9deg);
     }
   }
 </style>
