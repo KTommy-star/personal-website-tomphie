@@ -1,0 +1,58 @@
+<div class="journey-map__frame" data-journey-map data-active-point="dongguan">
+  <div class="journey-map__meta" aria-hidden="true">
+    <span>ROUTE / 01—05</span>
+    <span>113°E—104°E</span>
+  </div>
+
+  <svg class="journey-map__drawing" viewBox="0 0 520 660" role="img" aria-labelledby="journey-map-title journey-map-desc">
+    <title id="journey-map-title">从广东东莞，经重庆铜梁，到四川成都的人生路线</title>
+    <desc id="journey-map-desc">已经走过的地点使用实线，腾讯 Offer 代表的未来节点使用虚线。</desc>
+    <defs>
+      <pattern id="journey-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" class="journey-map__grid-line"></path>
+      </pattern>
+    </defs>
+    <rect width="520" height="660" fill="url(#journey-grid)"></rect>
+
+    <path class="journey-map__route-base" d="M100 535 C190 500 156 404 248 360 S354 285 330 178"></path>
+    <path class="journey-map__route-progress" data-journey-progress pathLength="1" d="M100 535 C190 500 156 404 248 360 S354 285 330 178"></path>
+    <path class="journey-map__route-future" d="M330 178 C390 136 426 92 476 36"></path>
+
+    <g class="journey-map__point" data-map-point="dongguan" transform="translate(100 535)">
+      <circle class="journey-map__pulse" r="22"></circle>
+      <circle class="journey-map__node" r="7"></circle>
+      <text x="24" y="-10">01</text>
+      <text class="journey-map__place" x="24" y="14">东莞</text>
+    </g>
+
+    <g class="journey-map__point" data-map-point="tongliang" transform="translate(248 360)">
+      <circle class="journey-map__orbit" r="44"></circle>
+      <circle class="journey-map__orbit journey-map__orbit--inner" r="28"></circle>
+      <circle class="journey-map__pulse" r="22"></circle>
+      <circle class="journey-map__node" r="7"></circle>
+      <text x="24" y="-10">02</text>
+      <text class="journey-map__place" x="24" y="14">铜梁</text>
+    </g>
+
+    <g class="journey-map__point" data-map-point="chengdu" transform="translate(330 178)">
+      <path class="journey-map__branches" d="M0 0 L-70 -54 M0 0 L72 -46 M0 0 L-78 55 M0 0 L82 62"></path>
+      <circle class="journey-map__pulse" r="22"></circle>
+      <circle class="journey-map__node" r="7"></circle>
+      <text x="24" y="-10">03</text>
+      <text class="journey-map__place" x="24" y="14">成都</text>
+    </g>
+
+    <g class="journey-map__point journey-map__point--future" data-map-point="future" transform="translate(476 36)">
+      <circle class="journey-map__pulse" r="22"></circle>
+      <circle class="journey-map__node" r="8"></circle>
+      <text x="-88" y="-8">04</text>
+      <text class="journey-map__place" x="-88" y="16">下一站</text>
+    </g>
+  </svg>
+
+  <p class="journey-map__caption" aria-live="polite">
+    <span data-map-caption>广东东莞</span>
+    <span aria-hidden="true">—</span>
+    <span>路线仍在生长</span>
+  </p>
+</div>

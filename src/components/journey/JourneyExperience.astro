@@ -1,0 +1,67 @@
+---
+import { journeyChapters, journeyFilters, studentRoles } from "../../data/journey";
+import { withBase } from "../../lib/paths";
+import JourneyChapter from "./JourneyChapter.astro";
+import JourneyMap from "./JourneyMap.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="journey-experience" data-journey-root aria-labelledby="journey-title">
+  <header class="journey-hero">
+    <div class="journey-hero__coordinate" aria-hidden="true">
+      <span>22.9°N</span>
+      <span>→</span>
+      <span>30.6°N</span>
+    </div>
+    <div class="journey-hero__copy">
+      <p class="journey-hero__kicker">人生轨迹</p>
+      <h1 id="journey-title">
+        <span>从东莞出发</span>
+        <span>沿着成长，来到成都</span>
+      </h1>
+      <p>
+        我的经历不是一张履历表，而是一条由地点、选择与同行的人慢慢汇成的路线
+      </p>
+    </div>
+    <a class="journey-hero__start" href="#journey-route">
+      <span>沿路线向下</span>
+      <span aria-hidden="true">↓</span>
+    </a>
+  </header>
+
+  <nav class="journey-filters" aria-label="筛选人生轨迹">
+    <p>查看图层</p>
+    <div>
+      {journeyFilters.map((filter, index) => (
+        <button
+          type="button"
+          data-journey-filter={filter.value}
+          aria-pressed={index === 0 ? "true" : "false"}
+        >
+          {filter.label}
+        </button>
+      ))}
+    </div>
+  </nav>
+
+  <div class="journey-layout" id="journey-route">
+    <aside class="journey-map" aria-label="人生路线概览">
+      <JourneyMap />
+    </aside>
+
+    <ol class="journey-chapters">
+      {journeyChapters.map((chapter) => (
+        <JourneyChapter chapter={chapter} studentRoles={studentRoles} />
+      ))}
+    </ol>
+  </div>
+
+  <footer class="journey-outro">
+    <p>路线没有终点，只有此刻所在的位置</p>
+    <div>
+      <a href={withBase("/research", base)}>沿着探索继续看「科研」</a>
+      <a href={withBase("/projects", base)}>沿着实践继续看「项目」</a>
+    </div>
+  </footer>
+</section>
