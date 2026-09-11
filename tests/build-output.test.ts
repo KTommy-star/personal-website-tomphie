@@ -44,6 +44,8 @@ describe("static routes", () => {
     expect(html).toContain('href="https://github.com/KTommy-star"');
     expect(html).toContain('data-route-progress');
     expect(html).toContain('data-route-card');
+    expect(html).toContain('data-story-progress');
+    expect(html).toContain('data-story-node');
     expect(html).not.toContain("resume-kong-junxin.pdf");
     expect(html).not.toContain("孔俊鑫 · PDF");
     expect(html).toContain('alt="孔俊鑫在湖边的个人照片"');
