@@ -35,6 +35,10 @@ describe("static routes", () => {
     expect(html).toContain("Tommy");
     expect(html).toContain("UESTCer");
     expect(html).toContain("TOMPHIE");
+    expect(html.match(/data-tomphie-logo/g)).toHaveLength(3);
+    expect(html).toContain('data-logo-variant="icon"');
+    expect(html).toContain('data-logo-variant="wordmark"');
+    expect(html).toContain("data-logo-reveal");
     expect(html).toContain("小城大爱实践队");
     expect(html).toContain("软件e声摄影部");
     expect(html).toContain('data-copy-value="ksanjin@163.com"');

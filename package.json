@@ -13,7 +13,7 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
     "test": "npm run test:unit",
-    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/brand-layout.test.ts tests/theme.test.ts",
+    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/brand-layout.test.ts tests/theme.test.ts tests/logo-theme-source.test.ts",
     "test:dist": "vitest run tests/build-output.test.ts",
     "test:watch": "vitest",
     "verify": "npm run test:unit && npm run check && npm run build && npm run test:dist"

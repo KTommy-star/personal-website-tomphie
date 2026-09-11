@@ -3,6 +3,7 @@ import { Picture } from "astro:assets";
 import profilePhoto from "../assets/profile.jpg";
 import { profile } from "../data/profile";
 import BrandWord from "./BrandWord.astro";
+import TomphieLogo from "./TomphieLogo.astro";
 ---
 
 <section class="brand-scene home-hero relative overflow-hidden pb-20 pt-12 sm:pb-24 sm:pt-16 lg:pb-28 lg:pt-20" aria-labelledby="home-title">
@@ -10,12 +11,15 @@ import BrandWord from "./BrandWord.astro";
 
   <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
     <div class="hero-copy grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)] lg:items-end">
-      <h1 id="home-title" class="text-balance font-semibold leading-[0.9]">
-        <span class="block text-[clamp(4.25rem,12vw,9.5rem)]">孔俊鑫</span>
-        <span class="mt-3 block text-[clamp(2.25rem,5.5vw,4.75rem)] text-path">Tommy</span>
-      </h1>
+      <div class="hero-identity">
+        <TomphieLogo variant="wordmark" reveal class="hero-logo" />
+        <h1 id="home-title" class="hero-title text-balance font-semibold leading-[0.9]">
+          <span class="block text-[clamp(4.25rem,12vw,9.5rem)]">孔俊鑫</span>
+          <span class="mt-3 block text-[clamp(2.25rem,5.5vw,4.75rem)] text-path">Tommy</span>
+        </h1>
+      </div>
 
-      <div class="max-w-xl lg:pb-2">
+      <div class="hero-support max-w-xl lg:pb-2">
         <p class="text-sm text-quiet">四川成都 · 电子科技大学</p>
         <p class="mt-5 text-pretty text-lg leading-8 sm:text-xl">
           {profile.heroLines.map((line) => <span class="block">{line}</span>)}
@@ -72,9 +76,29 @@ import BrandWord from "./BrandWord.astro";
     }
   }
 
+  :global(.hero-logo) {
+    width: clamp(7rem, 14vw, 13.75rem);
+    margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+    color: var(--color-ink);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
-    .hero-copy {
-      animation: hero-enter 600ms ease-out both;
+    .hero-title,
+    .hero-support,
+    .portrait-frame {
+      animation: hero-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .hero-title {
+      animation-delay: 780ms;
+    }
+
+    .hero-support {
+      animation-delay: 920ms;
+    }
+
+    .portrait-frame {
+      animation-delay: 1040ms;
     }
   }
 

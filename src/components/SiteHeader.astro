@@ -1,4 +1,5 @@
 ---
+import TomphieLogo from "./TomphieLogo.astro";
 import { navigation } from "../data/navigation";
 import { withBase } from "../lib/paths";
 
@@ -22,12 +23,12 @@ const isCurrent = (href: string) => {
 <header class="site-header sticky top-0 z-40 border-b border-line bg-paper/95">
   <div class="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 lg:px-10">
     <a
-      class="brand-link group inline-flex min-h-11 items-center gap-2 text-base font-semibold no-underline"
+      class="brand-link group inline-flex min-h-11 items-center gap-2.5 text-base font-semibold no-underline"
       href={withBase("/", base)}
       aria-label="Tomphie 首页"
     >
-      <span class="brand-dot size-2 rounded-full bg-path" aria-hidden="true"></span>
-      Tomphie
+      <TomphieLogo variant="icon" class="brand-logo" />
+      <span>Tomphie</span>
     </a>
 
     <nav class="hidden md:block" aria-label="主导航">
@@ -79,13 +80,21 @@ const isCurrent = (href: string) => {
 </header>
 
 <style>
-  .brand-dot {
-    transition: transform 150ms ease-out;
+  :global(.brand-logo) {
+    width: 2rem;
+    color: var(--color-path);
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .brand-link:hover .brand-dot,
-  .brand-link:focus-visible .brand-dot {
-    transform: scale(1.5);
+  .brand-link:hover :global(.brand-logo),
+  .brand-link:focus-visible :global(.brand-logo) {
+    transform: translate(0.125rem, -0.0625rem);
+  }
+
+  @media (max-width: 24rem) {
+    :global(.brand-logo) {
+      width: 1.625rem;
+    }
   }
 
   .nav-link::after {

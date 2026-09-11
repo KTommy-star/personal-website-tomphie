@@ -1,0 +1,81 @@
+---
+interface Props {
+  variant: "wordmark" | "icon";
+  reveal?: boolean;
+  class?: string;
+}
+
+const { variant, reveal = false, class: className } = Astro.props;
+const viewBox = variant === "wordmark" ? "33 45 913 481" : "0 0 480 480";
+---
+
+<svg
+  class:list={["tomphie-logo", className, { "tomphie-logo--reveal": reveal }]}
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox={viewBox}
+  fill="none"
+  stroke="currentColor"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  data-tomphie-logo
+  data-logo-variant={variant}
+  data-logo-reveal={reveal ? "true" : undefined}
+>
+  {variant === "wordmark" ? (
+    <g stroke-width="32">
+      <path pathLength="1" stroke-width="38" d="M 74 204 C 290 158 520 112 758 88" />
+      <path pathLength="1" d="M 240 186 C 232 258 210 340 186 410" />
+      <path pathLength="1" d="M 372 268 C 352 246 306 246 284 278 C 262 310 266 352 296 370 C 326 388 366 378 380 348 C 388 328 392 300 400 280 C 410 258 428 248 440 262 C 448 278 447 314 446 348 C 452 300 462 258 482 250 C 498 244 510 252 514 268 C 517 290 516 320 515 348 C 513 400 510 440 507 486" />
+      <path pathLength="1" d="M 516 264 C 542 246 580 240 608 252 C 638 266 646 298 634 322 C 622 346 580 354 550 346 C 534 344 515 332 515 344" />
+      <path pathLength="1" d="M 666 168 C 664 240 664 300 663 348" />
+      <path pathLength="1" d="M 665 272 C 674 248 702 240 726 246 C 744 252 756 268 757 292 C 758 314 757 332 756 350" />
+      <path pathLength="1" d="M 744 187 C 752 185 760 183 768 181" />
+      <path pathLength="1" d="M 816 184 C 844 180 880 177 908 174" />
+      <path pathLength="1" d="M 812 260 C 842 256 880 253 908 250" />
+      <path pathLength="1" d="M 808 336 C 840 332 880 329 908 326" />
+    </g>
+  ) : (
+    <g stroke-width="32">
+      <path pathLength="1" stroke-width="38" d="M 47 186 C 171 158 311 132 433 118" />
+      <path pathLength="1" d="M 144 174 C 138 236 124 304 108 366" />
+      <path pathLength="1" d="M 250 254 C 238 240 206 240 191 263 C 176 286 178 315 199 329 C 220 343 248 335 258 314 C 264 300 262 272 250 254" />
+      <path pathLength="1" d="M 321 226 C 343 223 371 220 395 218" />
+      <path pathLength="1" d="M 317 290 C 341 287 371 284 395 282" />
+      <path pathLength="1" d="M 313 354 C 339 351 369 348 395 346" />
+    </g>
+  )}
+</svg>
+
+<style>
+  .tomphie-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tomphie-logo--reveal path {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: logo-draw 780ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+    }
+
+    .tomphie-logo--reveal path:nth-child(2) { animation-delay: 90ms; }
+    .tomphie-logo--reveal path:nth-child(3) { animation-delay: 180ms; }
+    .tomphie-logo--reveal path:nth-child(4) { animation-delay: 360ms; }
+    .tomphie-logo--reveal path:nth-child(5) { animation-delay: 460ms; }
+    .tomphie-logo--reveal path:nth-child(6) { animation-delay: 540ms; }
+    .tomphie-logo--reveal path:nth-child(7) { animation-delay: 620ms; }
+    .tomphie-logo--reveal path:nth-child(8) { animation-delay: 680ms; }
+    .tomphie-logo--reveal path:nth-child(9) { animation-delay: 730ms; }
+    .tomphie-logo--reveal path:nth-child(10) { animation-delay: 780ms; }
+  }
+
+  @keyframes logo-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+</style>
