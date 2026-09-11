@@ -3,46 +3,143 @@ import { profile } from "../data/profile";
 import { withBase } from "../lib/paths";
 
 const base = import.meta.env.BASE_URL;
+const copyContacts = [
+  { label: "邮箱", value: profile.email },
+  { label: "QQ", value: profile.qq },
+  { label: "微信", value: profile.wechat },
+];
 ---
 
-<section class="py-20 sm:py-28 lg:py-36" aria-labelledby="contact-title">
+<section class="py-20 sm:py-24 lg:py-28" aria-labelledby="contact-title">
   <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="grid gap-12 border-y border-line py-12 sm:py-16 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-end">
+    <div class="grid gap-10 border-y border-line py-12 sm:py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:items-end">
       <div>
         <p class="font-serif text-2xl leading-relaxed text-path sm:text-3xl">“{profile.quote}”</p>
-        <h2 id="contact-title" class="mt-7 text-balance text-4xl font-semibold leading-tight sm:text-6xl">
-          好好规划未来的路，<br />
-          也认真过好当下。
+        <h2 id="contact-title" class="mt-6 text-balance text-4xl font-semibold leading-[1.14] sm:text-6xl">
+          <span class="block">好好规划未来的路</span>
+          <span class="block">也认真过好当下</span>
         </h2>
-        <p class="mt-7 max-w-2xl text-pretty text-lg leading-8 text-quiet">
-          好好吃饭，好好生活，好好恋爱。无论是研究交流、项目合作，还是分享一个有意思的想法，都时刻欢迎联系我。
+        <p class="mt-6 max-w-2xl text-pretty text-lg leading-8 text-quiet">
+          <span class="block">好好吃饭 好好生活 好好恋爱</span>
+          <span class="block">研究交流 项目合作 有趣想法 都欢迎联系我</span>
         </p>
       </div>
 
-      <div class="grid gap-3 lg:justify-self-end">
-        <a class="contact-link" href={`mailto:${profile.email}`}>给我写邮件</a>
-        <a class="contact-link" href={profile.github} target="_blank" rel="noreferrer">查看 GitHub</a>
-        <a class="contact-link" href={withBase(profile.resumePath, base)} download>下载个人简历</a>
+      <div class="contact-list border-t border-line lg:justify-self-stretch">
+        {copyContacts.map((contact) => (
+          <button
+            class="contact-action"
+            type="button"
+            data-copy-value={contact.value}
+            aria-label={`复制${contact.label} ${contact.value}`}
+          >
+            <span class="contact-label">{contact.label}</span>
+            <span class="contact-value">{contact.value}</span>
+            <span class="contact-state" data-copy-state>复制</span>
+          </button>
+        ))}
+
+        <a class="contact-action" href={profile.github} target="_blank" rel="noreferrer">
+          <span class="contact-label">GitHub</span>
+          <span class="contact-value">{profile.githubLabel}</span>
+          <span class="contact-state">打开</span>
+        </a>
+
+        <a class="contact-action" href={withBase(profile.resumePath, base)} download>
+          <span class="contact-label">简历</span>
+          <span class="contact-value">孔俊鑫 · PDF</span>
+          <span class="contact-state">下载</span>
+        </a>
+
+        <p class="sr-only" aria-live="polite" data-copy-status></p>
       </div>
     </div>
   </div>
 </section>
 
+<script>
+  const copyText = async (value: string) => {
+    if (!navigator.clipboard || !window.isSecureContext) {
+      throw new Error("clipboard unavailable");
+    }
+
+    await navigator.clipboard.writeText(value);
+  };
+
+  document.querySelectorAll<HTMLButtonElement>("[data-copy-value]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const value = button.dataset.copyValue;
+      const state = button.querySelector<HTMLElement>("[data-copy-state]");
+      const status = document.querySelector<HTMLElement>("[data-copy-status]");
+
+      if (!value || !state || !status) return;
+
+      try {
+        await copyText(value);
+        button.dataset.copied = "true";
+        state.textContent = "已复制";
+        status.textContent = `已复制 ${value}`;
+      } catch {
+        state.textContent = "复制失败";
+        status.textContent = `未能复制 ${value}，请手动选择文本`;
+      }
+
+      window.setTimeout(() => {
+        delete button.dataset.copied;
+        state.textContent = "复制";
+      }, 1600);
+    });
+  });
+</script>
+
 <style>
-  .contact-link {
-    display: inline-flex;
-    min-height: 3rem;
+  .contact-action {
+    display: grid;
+    width: 100%;
+    min-height: 3.5rem;
+    grid-template-columns: 4rem minmax(0, 1fr) auto;
     align-items: center;
-    border-bottom: 0.125rem solid var(--color-line);
-    font-weight: 600;
+    gap: 0.75rem;
+    border: 0;
+    border-bottom: 0.0625rem solid var(--color-line);
+    background: transparent;
+    padding: 0.75rem 0;
+    color: inherit;
+    font: inherit;
+    text-align: start;
     text-decoration: none;
+    cursor: pointer;
     transition:
-      border-color 150ms ease-out,
-      color 150ms ease-out;
+      color 150ms ease-out,
+      transform 150ms ease-out;
   }
 
-  .contact-link:hover {
-    border-color: var(--color-path);
+  .contact-action:hover {
+    color: var(--color-path);
+  }
+
+  .contact-action:active {
+    transform: scale(0.985);
+  }
+
+  .contact-label,
+  .contact-state {
+    font-size: 0.75rem;
+    color: var(--color-quiet);
+  }
+
+  .contact-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .contact-state {
+    justify-self: end;
+  }
+
+  .contact-action[data-copied="true"] .contact-state {
     color: var(--color-path);
   }
 </style>

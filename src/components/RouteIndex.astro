@@ -6,14 +6,16 @@ const base = import.meta.env.BASE_URL;
 const destinations = navigation.filter((item) => item.href !== "/");
 ---
 
-<section class="route-index border-t border-line py-20 sm:py-28" aria-labelledby="route-index-title">
+<section class="route-index border-t border-line py-20 sm:py-24" aria-labelledby="route-index-title">
   <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="mb-16 grid gap-5 md:grid-cols-2 md:items-end">
-      <h2 id="route-index-title" class="max-w-xl text-3xl font-semibold sm:text-5xl">
-        从一个坐标，走向不同的内容。
+    <div class="mb-12 grid gap-5 md:grid-cols-2 md:items-end">
+      <h2 id="route-index-title" class="max-w-xl text-3xl font-semibold leading-tight sm:text-5xl">
+        <span class="block">从一个坐标</span>
+        <span class="block">走向不同的内容</span>
       </h2>
       <p class="max-w-xl text-quiet md:justify-self-end">
-        这条路径是全站的共同线索。它会随着内容逐渐完整，但不会替代清楚的文字和导航。
+        <span class="block">路径是全站共同的线索</span>
+        <span class="block">但不会替代清楚的文字与导航</span>
       </p>
     </div>
 
@@ -22,15 +24,15 @@ const destinations = navigation.filter((item) => item.href !== "/");
         <span class="route-progress"></span>
       </div>
 
-      <ol class="grid gap-6 sm:gap-8">
+      <ol class="grid gap-4 sm:gap-6">
         {destinations.map((item) => (
           <li class="route-item">
             <span class="route-dot" aria-hidden="true"></span>
             <a
-              class="group grid min-h-36 gap-4 border-y border-line bg-paper py-7 no-underline sm:grid-cols-[minmax(8rem,0.65fr)_minmax(0,1fr)] sm:items-center sm:py-9"
+              class="route-card group grid min-h-32 gap-3 border-y border-line bg-paper py-6 no-underline sm:grid-cols-[minmax(8rem,0.65fr)_minmax(0,1fr)] sm:items-center sm:py-7"
               href={withBase(item.href, base)}
             >
-              <span class="text-xl font-semibold group-hover:text-path">{item.label}</span>
+              <span class="route-title text-xl font-semibold">{item.label}</span>
               <span class="max-w-xl text-sm leading-7 text-quiet">{item.description}</span>
             </a>
           </li>
@@ -74,6 +76,28 @@ const destinations = navigation.filter((item) => item.href !== "/");
     border-radius: 9999px;
     background: var(--color-path);
     transform: translateY(-50%);
+    transition: transform 180ms ease-out;
+  }
+
+  .route-card {
+    transition:
+      color 180ms ease-out,
+      transform 180ms ease-out;
+  }
+
+  .route-card:hover,
+  .route-card:focus-visible {
+    transform: translateY(-0.25rem);
+  }
+
+  .route-card:hover .route-title,
+  .route-card:focus-visible .route-title {
+    color: var(--color-path);
+  }
+
+  .route-item:focus-within .route-dot,
+  .route-item:hover .route-dot {
+    transform: translateY(-50%) scale(1.2);
   }
 
   @supports (animation-timeline: view()) {
@@ -88,6 +112,7 @@ const destinations = navigation.filter((item) => item.href !== "/");
     from {
       transform: scaleY(0.08);
     }
+
     to {
       transform: scaleY(1);
     }
@@ -125,6 +150,11 @@ const destinations = navigation.filter((item) => item.href !== "/");
     .route-dot {
       inset-inline-start: 50%;
       transform: translate(-50%, -50%);
+    }
+
+    .route-item:focus-within .route-dot,
+    .route-item:hover .route-dot {
+      transform: translate(-50%, -50%) scale(1.2);
     }
   }
 </style>

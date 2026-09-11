@@ -34,10 +34,17 @@ describe("static routes", () => {
     expect(html).toContain("孔俊鑫");
     expect(html).toContain("Tommy");
     expect(html).toContain("UESTCer");
-    expect(html).toContain('href="mailto:ksanjin@163.com"');
+    expect(html).toContain("TOMPHIE");
+    expect(html).toContain("小城大爱实践队");
+    expect(html).toContain("软件e声摄影部");
+    expect(html).toContain('data-copy-value="ksanjin@163.com"');
+    expect(html).toContain('data-copy-value="2454002157"');
+    expect(html).toContain('data-copy-value="TommyK2024"');
+    expect(html).toContain("github.com/KTommy-star");
     expect(html).toContain('href="https://github.com/KTommy-star"');
     expect(html).toContain('href="/files/resume-kong-junxin.pdf"');
     expect(html).toContain('alt="孔俊鑫在湖边的个人照片"');
+    expect(html).not.toContain('href="mailto:');
     expect(html).not.toContain("/Users/kongsanjin");
   });
 

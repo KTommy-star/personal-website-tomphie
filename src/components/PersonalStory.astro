@@ -2,11 +2,11 @@
 import { profile } from "../data/profile";
 ---
 
-<section class="border-y border-line py-20 sm:py-28 lg:py-36" aria-labelledby="story-title">
-  <div class="mx-auto grid max-w-7xl gap-16 px-5 sm:px-8 lg:grid-cols-[minmax(16rem,0.7fr)_minmax(0,1.3fr)] lg:px-10">
+<section class="border-y border-line py-20 sm:py-24 lg:py-28" aria-labelledby="story-title">
+  <div class="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(16rem,0.65fr)_minmax(0,1.35fr)] lg:gap-16 lg:px-10">
     <aside class="lg:sticky lg:top-28 lg:self-start" aria-label="人生坐标">
       <p class="text-sm font-semibold">我的坐标</p>
-      <ol class="story-path relative mt-8 grid gap-8 pl-8" role="list">
+      <ol class="story-path relative mt-7 grid gap-7 pl-8" role="list">
         {profile.locations.map((location) => (
           <li class="relative">
             <span class="story-dot" aria-hidden="true"></span>
@@ -18,12 +18,16 @@ import { profile } from "../data/profile";
     </aside>
 
     <article class="max-w-3xl">
-      <h2 id="story-title" class="text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-        从山城出发，<br class="hidden sm:block" />
-        在更大的世界里寻找坐标。
+      <h2 id="story-title" class="text-balance text-4xl font-semibold leading-[1.14] sm:text-5xl lg:text-6xl">
+        <span class="block">从山城出发</span>
+        <span class="block">在更大的世界里寻找坐标</span>
       </h2>
-      <div class="mt-12 grid gap-8 text-pretty text-lg leading-9 text-quiet sm:text-xl sm:leading-10">
-        {profile.story.map((paragraph) => <p>{paragraph}</p>)}
+      <div class="story-copy mt-10 grid gap-7 text-pretty text-lg leading-9 text-quiet sm:text-xl sm:leading-10">
+        {profile.story.map((paragraph) => (
+          <p>
+            {paragraph.map((line) => <span class="block">{line}</span>)}
+          </p>
+        ))}
       </div>
     </article>
   </div>
@@ -60,12 +64,23 @@ import { profile } from "../data/profile";
     border: 0.1875rem solid var(--color-paper);
     border-radius: 9999px;
     background: var(--color-path);
+    transition: transform 180ms ease-out;
+  }
+
+  .story-path:hover .story-dot {
+    transform: scale(1.16);
   }
 
   @supports (animation-timeline: view()) {
     .story-path::after {
       animation: story-progress linear both;
       animation-range: entry 10% exit 75%;
+      animation-timeline: view();
+    }
+
+    .story-copy {
+      animation: story-enter linear both;
+      animation-range: entry 0% entry 32%;
       animation-timeline: view();
     }
   }
@@ -76,10 +91,23 @@ import { profile } from "../data/profile";
     }
   }
 
+  @keyframes story-enter {
+    from {
+      opacity: 0.45;
+      transform: translateY(1.25rem);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .story-path::after {
+    .story-path::after,
+    .story-copy {
       animation: none;
-      transform: scaleY(1);
+      transform: none;
     }
   }
 </style>

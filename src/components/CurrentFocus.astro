@@ -2,28 +2,31 @@
 import { profile } from "../data/profile";
 ---
 
-<section class="bg-ink py-20 text-paper sm:py-28 lg:py-36" aria-labelledby="focus-title">
-  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="grid gap-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,1.1fr)]">
+<section class="focus-section relative overflow-hidden bg-ink py-20 text-paper sm:py-24 lg:py-28" aria-labelledby="focus-title">
+  <div class="focus-word" aria-hidden="true">TOMPHIE</div>
+
+  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+    <div class="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,1.1fr)] lg:gap-16">
       <div class="lg:sticky lg:top-28 lg:self-start">
-        <h2 id="focus-title" class="text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-          在广度里探索，<br />
-          在深度里求索。
+        <h2 id="focus-title" class="text-balance text-4xl font-semibold leading-[1.12] sm:text-5xl lg:text-6xl">
+          <span class="block">在广度里探索</span>
+          <span class="block">也在深度里求索</span>
         </h2>
-        <p class="mt-8 max-w-xl text-pretty text-lg leading-8 text-paper/70">
-          对新的方向保持好奇，也愿意围绕真正值得解决的问题持续向下。
+        <p class="mt-7 max-w-lg text-pretty text-lg leading-8 text-paper/70">
+          <span class="block">对新的方向保持好奇</span>
+          <span class="block">对真正的问题保持耐心</span>
         </p>
 
-        <ul class="mt-12 grid gap-3 text-sm text-paper/70" role="list">
-          {profile.roles.map((role) => <li>{role}</li>)}
+        <ul class="role-list mt-10 border-t border-paper/20 text-sm text-paper/72" role="list">
+          {profile.roles.map((role) => <li class="border-b border-paper/20 py-3">{role}</li>)}
         </ul>
       </div>
 
       <div>
-        <p class="mb-5 text-sm text-paper/60">正在关注的研究方向</p>
+        <p class="mb-4 text-sm text-paper/60">正在关注的研究方向</p>
         <ul class="border-t border-paper/20" role="list">
           {profile.focuses.map((focus) => (
-            <li class="border-b border-paper/20 py-7 text-2xl font-semibold sm:py-9 sm:text-4xl">
+            <li class="focus-item border-b border-paper/20 py-6 text-2xl font-semibold sm:py-7 sm:text-4xl">
               {focus}
             </li>
           ))}
@@ -32,3 +35,59 @@ import { profile } from "../data/profile";
     </div>
   </div>
 </section>
+
+<style>
+  .focus-word {
+    position: absolute;
+    inset-block-end: -0.12em;
+    inset-inline-start: -0.08em;
+    color: transparent;
+    font-family: "Arial Black", "Helvetica Neue", sans-serif;
+    font-size: clamp(8rem, 22vw, 20rem);
+    font-weight: 900;
+    line-height: 0.75;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    -webkit-text-stroke: 0.0625rem rgb(244 247 250 / 7%);
+    transform: scaleX(0.92) skewX(-9deg);
+    transform-origin: left bottom;
+  }
+
+  .focus-item {
+    transition:
+      color 180ms ease-out,
+      transform 180ms ease-out;
+  }
+
+  @media (hover: hover) {
+    .focus-item:hover {
+      color: #8ea8ff;
+      transform: translateX(0.5rem);
+    }
+  }
+
+  @supports (animation-timeline: view()) {
+    .focus-item {
+      animation: focus-enter linear both;
+      animation-range: entry 0% entry 35%;
+      animation-timeline: view();
+    }
+  }
+
+  @keyframes focus-enter {
+    from {
+      opacity: 0.35;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .focus-item {
+      animation: none;
+    }
+  }
+</style>

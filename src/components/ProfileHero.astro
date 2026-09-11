@@ -4,26 +4,26 @@ import profilePhoto from "../assets/profile.jpg";
 import { profile } from "../data/profile";
 ---
 
-<section class="home-hero pb-20 pt-14 sm:pb-28 sm:pt-20 lg:pb-36 lg:pt-24" aria-labelledby="home-title">
-  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="hero-copy grid gap-10 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.65fr)] lg:items-end">
-      <h1 id="home-title" class="text-balance font-semibold leading-[0.92]">
-        <span class="block text-[clamp(4.5rem,13vw,10rem)]">孔俊鑫</span>
-        <span class="mt-3 block text-[clamp(2.25rem,6vw,5rem)] text-path">Tommy</span>
+<section class="home-hero relative overflow-hidden pb-20 pt-12 sm:pb-24 sm:pt-16 lg:pb-28 lg:pt-20" aria-labelledby="home-title">
+  <div class="hero-word" aria-hidden="true"><span>TOMPHIE</span></div>
+
+  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+    <div class="hero-copy grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)] lg:items-end">
+      <h1 id="home-title" class="text-balance font-semibold leading-[0.9]">
+        <span class="block text-[clamp(4.25rem,12vw,9.5rem)]">孔俊鑫</span>
+        <span class="mt-3 block text-[clamp(2.25rem,5.5vw,4.75rem)] text-path">Tommy</span>
       </h1>
 
-      <div class="max-w-lg lg:pb-3">
+      <div class="max-w-xl lg:pb-2">
         <p class="text-sm text-quiet">四川成都 · 电子科技大学</p>
         <p class="mt-5 text-pretty text-lg leading-8 sm:text-xl">
-          {profile.tagline}
+          {profile.heroLines.map((line) => <span class="block">{line}</span>)}
         </p>
-        <p class="mt-6 text-sm text-quiet">
-          也叫 {profile.aliases.join(" / ")}
-        </p>
+        <p class="mt-5 text-sm text-quiet">也叫 {profile.aliases.join(" / ")}</p>
       </div>
     </div>
 
-    <figure class="portrait-frame mt-14 overflow-hidden bg-line sm:mt-20">
+    <figure class="portrait-frame mt-12 overflow-hidden bg-line sm:mt-16">
       <div class="portrait-media">
         <Picture
           src={profilePhoto}
@@ -38,13 +38,35 @@ import { profile } from "../data/profile";
       </div>
       <figcaption class="flex flex-wrap justify-between gap-2 border-t border-line bg-paper px-4 py-3 text-xs text-quiet sm:px-5">
         <span>Tomphie / sanjin</span>
-        <span>好好吃饭，好好生活</span>
+        <span>好好吃饭 好好生活</span>
       </figcaption>
     </figure>
   </div>
 </section>
 
 <style>
+  .hero-word {
+    position: absolute;
+    inset-block-start: 4.5rem;
+    inset-inline: 0;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .hero-word span {
+    display: block;
+    color: transparent;
+    font-family: "Arial Black", "Helvetica Neue", sans-serif;
+    font-size: clamp(7rem, 24vw, 22rem);
+    font-weight: 900;
+    line-height: 0.78;
+    -webkit-text-stroke: 0.0625rem rgb(23 72 210 / 18%);
+    transform: translateX(-5%) scaleX(0.84) skewX(-9deg);
+    transform-origin: center;
+  }
+
   .portrait-media {
     aspect-ratio: 4 / 5;
   }
@@ -59,6 +81,14 @@ import { profile } from "../data/profile";
   .portrait-media :global(img) {
     object-fit: cover;
     object-position: 39% center;
+  }
+
+  @supports (animation-timeline: view()) {
+    .hero-word span {
+      animation: word-drift linear both;
+      animation-range: entry 0% exit 100%;
+      animation-timeline: view();
+    }
   }
 
   @media (min-width: 40rem) {
@@ -86,6 +116,23 @@ import { profile } from "../data/profile";
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes word-drift {
+    from {
+      transform: translateX(-7%) scaleX(0.84) skewX(-9deg);
+    }
+
+    to {
+      transform: translateX(3%) scaleX(0.84) skewX(-9deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-word span {
+      animation: none;
+      transform: translateX(-2%) scaleX(0.84) skewX(-9deg);
     }
   }
 </style>
