@@ -75,6 +75,7 @@ describe("static routes", () => {
     }
     expect(html).toContain("data-journey-map");
     expect(html).toContain("data-journey-filter");
+    expect(html).toContain('data-brand-placement="journey"');
     expect(html).not.toContain("130 0231 1696");
     expect(html).not.toContain("2005-03");
     expect(html).not.toContain("/Users/kongsanjin");
