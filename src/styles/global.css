@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f7f7f5;
-  --color-ink: #111111;
-  --color-quiet: #686864;
-  --color-line: #d8d8d2;
-  --color-path: #2457ff;
+  --color-paper: #f4f7fa;
+  --color-ink: #111419;
+  --color-quiet: #555e68;
+  --color-line: #d3dae2;
+  --color-path: #1748d2;
   --color-memory: #9b4257;
-  --font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-serif: "Noto Serif SC", "Songti SC", serif;
+  --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif: "Songti SC", "STSong", "Noto Serif SC", serif;
 }
 
 @layer base {
@@ -22,12 +22,14 @@
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
   }
 
   body {
     min-width: 20rem;
     min-height: 100dvh;
     margin: 0;
+    overflow-x: clip;
     background: var(--color-paper);
     color: var(--color-ink);
     line-height: 1.65;

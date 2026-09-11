@@ -1,0 +1,48 @@
+---
+import { profile } from "../data/profile";
+import { withBase } from "../lib/paths";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="py-20 sm:py-28 lg:py-36" aria-labelledby="contact-title">
+  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+    <div class="grid gap-12 border-y border-line py-12 sm:py-16 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] lg:items-end">
+      <div>
+        <p class="font-serif text-2xl leading-relaxed text-path sm:text-3xl">“{profile.quote}”</p>
+        <h2 id="contact-title" class="mt-7 text-balance text-4xl font-semibold leading-tight sm:text-6xl">
+          好好规划未来的路，<br />
+          也认真过好当下。
+        </h2>
+        <p class="mt-7 max-w-2xl text-pretty text-lg leading-8 text-quiet">
+          好好吃饭，好好生活，好好恋爱。无论是研究交流、项目合作，还是分享一个有意思的想法，都时刻欢迎联系我。
+        </p>
+      </div>
+
+      <div class="grid gap-3 lg:justify-self-end">
+        <a class="contact-link" href={`mailto:${profile.email}`}>给我写邮件</a>
+        <a class="contact-link" href={profile.github} target="_blank" rel="noreferrer">查看 GitHub</a>
+        <a class="contact-link" href={withBase(profile.resumePath, base)} download>下载个人简历</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact-link {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    border-bottom: 0.125rem solid var(--color-line);
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      border-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+
+  .contact-link:hover {
+    border-color: var(--color-path);
+    color: var(--color-path);
+  }
+</style>

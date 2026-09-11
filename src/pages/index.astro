@@ -1,49 +1,19 @@
 ---
+import ContactPanel from "../components/ContactPanel.astro";
+import CurrentFocus from "../components/CurrentFocus.astro";
+import PersonalStory from "../components/PersonalStory.astro";
+import ProfileHero from "../components/ProfileHero.astro";
 import RouteIndex from "../components/RouteIndex.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { withBase } from "../lib/paths";
-
-const base = import.meta.env.BASE_URL;
 ---
 
-<BaseLayout>
-  <section class="flex min-h-[calc(100dvh-4rem)] items-end py-14 sm:py-20">
-    <div class="mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-10">
-      <div class="grid gap-12 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,0.7fr)] lg:items-end">
-        <div>
-          <p class="mb-8 inline-flex items-center gap-3 text-sm text-quiet">
-            <span class="size-3 rounded-full bg-path" aria-hidden="true"></span>
-            当前坐标：网站正在生长
-          </p>
-          <h1 class="max-w-5xl text-5xl font-semibold leading-[1.02] sm:text-7xl lg:text-8xl">
-            把走过的路、做过的事与写下的思考，放在同一张坐标里。
-          </h1>
-        </div>
-        <div class="max-w-xl lg:pb-2">
-          <p class="text-base leading-8 text-quiet sm:text-lg">
-            这里将记录我的求学与实习经历、科研探索、项目实践、学习笔记，以及值得认真保存的共同记忆。
-          </p>
-          <a
-            class="mt-8 inline-flex min-h-12 items-center border-b-2 border-path text-sm font-semibold no-underline transition-colors duration-150 hover:text-path"
-            href={withBase("/journey", base)}
-          >
-            从人生轨迹开始
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
+<BaseLayout
+  title="孔俊鑫 / Tommy"
+  description="孔俊鑫（Tommy）的个人网站：记录 UESTC 求学、AI 研究探索、项目实践、学习笔记与生活故事。"
+>
+  <ProfileHero />
+  <PersonalStory />
+  <CurrentFocus />
   <RouteIndex />
-
-  <section class="border-t border-line py-16 sm:py-20">
-    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-      <div class="grid gap-6 md:grid-cols-2 md:items-end">
-        <h2 class="text-3xl font-semibold sm:text-4xl">真实内容将决定最终形状。</h2>
-        <p class="max-w-xl text-quiet md:justify-self-end">
-          当前版本先建立结构和节奏。经历、成果、照片与文字会在后续模块中逐项替换这里的建设说明。
-        </p>
-      </div>
-    </div>
-  </section>
+  <ContactPanel />
 </BaseLayout>

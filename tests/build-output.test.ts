@@ -25,6 +25,22 @@ describe("static routes", () => {
     });
   }
 
+  it("publishes the real homepage identity and contact paths", async () => {
+    const html = await readFile(
+      new URL("../dist/index.html", import.meta.url),
+      "utf8",
+    );
+
+    expect(html).toContain("孔俊鑫");
+    expect(html).toContain("Tommy");
+    expect(html).toContain("UESTCer");
+    expect(html).toContain('href="mailto:ksanjin@163.com"');
+    expect(html).toContain('href="https://github.com/KTommy-star"');
+    expect(html).toContain('href="/files/resume-kong-junxin.pdf"');
+    expect(html).toContain('alt="孔俊鑫在湖边的个人照片"');
+    expect(html).not.toContain("/Users/kongsanjin");
+  });
+
   it("publishes crawler guidance", async () => {
     const robots = await readFile(
       new URL("../dist/robots.txt", import.meta.url),

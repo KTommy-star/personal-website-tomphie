@@ -1,0 +1,34 @@
+---
+import { profile } from "../data/profile";
+---
+
+<section class="bg-ink py-20 text-paper sm:py-28 lg:py-36" aria-labelledby="focus-title">
+  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+    <div class="grid gap-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,1.1fr)]">
+      <div class="lg:sticky lg:top-28 lg:self-start">
+        <h2 id="focus-title" class="text-balance text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
+          在广度里探索，<br />
+          在深度里求索。
+        </h2>
+        <p class="mt-8 max-w-xl text-pretty text-lg leading-8 text-paper/70">
+          对新的方向保持好奇，也愿意围绕真正值得解决的问题持续向下。
+        </p>
+
+        <ul class="mt-12 grid gap-3 text-sm text-paper/70" role="list">
+          {profile.roles.map((role) => <li>{role}</li>)}
+        </ul>
+      </div>
+
+      <div>
+        <p class="mb-5 text-sm text-paper/60">正在关注的研究方向</p>
+        <ul class="border-t border-paper/20" role="list">
+          {profile.focuses.map((focus) => (
+            <li class="border-b border-paper/20 py-7 text-2xl font-semibold sm:py-9 sm:text-4xl">
+              {focus}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
