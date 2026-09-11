@@ -14,7 +14,6 @@ export const profile = {
   wechat: "TommyK2024",
   github: "https://github.com/KTommy-star",
   githubLabel: "github.com/KTommy-star",
-  resumePath: "/files/resume-kong-junxin.pdf",
   locations: [
     { place: "粤港大湾区", note: "出生" },
     { place: "重庆铜梁", note: "成长" },

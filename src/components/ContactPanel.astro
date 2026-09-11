@@ -1,9 +1,7 @@
 ---
 import { profile } from "../data/profile";
-import { withBase } from "../lib/paths";
 import BrandWord from "./BrandWord.astro";
 
-const base = import.meta.env.BASE_URL;
 const copyContacts = [
   { label: "邮箱", value: profile.email },
   { label: "QQ", value: profile.qq },
@@ -48,11 +46,6 @@ const copyContacts = [
           <span class="contact-state">打开</span>
         </a>
 
-        <a class="contact-action" href={withBase(profile.resumePath, base)} download>
-          <span class="contact-label">简历</span>
-          <span class="contact-value">孔俊鑫 · PDF</span>
-          <span class="contact-state">下载</span>
-        </a>
 
         <p class="sr-only" aria-live="polite" data-copy-status></p>
       </div>
