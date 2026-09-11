@@ -53,6 +53,14 @@
     touch-action: manipulation;
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    a:not(.skip-link):active,
+    button:active,
+    summary:active {
+      transform: scale(0.985);
+    }
+  }
+
   :focus-visible {
     outline: 0.1875rem solid var(--color-path);
     outline-offset: 0.25rem;
