@@ -1,0 +1,19 @@
+---
+import EmptyState from "../../components/EmptyState.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="科研" description="研究方向、正式成果与持续进行的学术探索。">
+  <PageIntro title="科研" description="这里会清楚地区分正式成果、进行中的研究和过程型笔记，让专业访客快速判断方向与贡献。" />
+  <EmptyState
+    body="科研主页将以可信、清晰和可引用为第一目标，动效只用于解释关系，不干扰阅读。"
+    items={[
+      "研究方向与目前最关心的问题",
+      "论文、报告、代码、数据集或比赛成果",
+      "每项成果中的个人贡献与当前状态",
+      "论文链接、代码仓库、引用信息与展示材料",
+    ]}
+    nextStep="提供一项最具代表性的科研成果和你的具体贡献。"
+  />
+</BaseLayout>

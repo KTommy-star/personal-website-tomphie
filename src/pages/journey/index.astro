@@ -1,0 +1,19 @@
+---
+import EmptyState from "../../components/EmptyState.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="人生轨迹" description="用地图和时间轴连接求学、实习与重要经历。">
+  <PageIntro title="人生轨迹" description="地图回答我去过哪里，时间轴回答这些经历如何一步步发生。求学与实习会在同一条路径中按图层查看。" />
+  <EmptyState
+    body="地图与时间轴的结构已经确定。收到真实经历后，每个节点会同时拥有地点、时间、身份与一段值得保留的故事。"
+    items={[
+      "学校或单位名称，以及准确的起止时间",
+      "城市、校区或办公地点",
+      "当时的身份、专业、岗位与主要经历",
+      "可公开的照片，以及关联的科研或项目",
+    ]}
+    nextStep="先提供一段最完整的求学或实习经历，作为第一个轨迹节点。"
+  />
+</BaseLayout>

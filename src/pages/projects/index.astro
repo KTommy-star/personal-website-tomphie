@@ -1,0 +1,19 @@
+---
+import EmptyState from "../../components/EmptyState.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="项目" description="通过完整案例记录问题、选择、过程与结果。">
+  <PageIntro title="项目" description="项目不会只是卡片和技术名词，而会成为能够读懂背景、职责、困难、取舍与结果的完整案例。" />
+  <EmptyState
+    body="首版建议先打磨三到六个代表项目。每个项目都需要说明你实际承担的部分，而不是只展示成品截图。"
+    items={[
+      "项目名称、时间、背景与目标",
+      "你的角色、协作者和责任边界",
+      "关键过程、技术选择与遇到的困难",
+      "最终结果、数据、演示、截图与代码链接",
+    ]}
+    nextStep="选择最能代表你能力的一个项目，提供从背景到结果的完整材料。"
+  />
+</BaseLayout>

@@ -1,0 +1,32 @@
+---
+interface Props {
+  heading?: string;
+  body: string;
+  items: string[];
+  nextStep: string;
+}
+
+const {
+  heading = "内容框架已就位",
+  body,
+  items,
+  nextStep,
+} = Astro.props;
+---
+
+<section class="py-16 sm:py-20" aria-labelledby="content-ready-title">
+  <div class="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,1fr)] lg:px-10">
+    <div>
+      <h2 id="content-ready-title" class="text-2xl font-semibold sm:text-3xl">{heading}</h2>
+      <p class="mt-4 max-w-2xl text-quiet">{body}</p>
+    </div>
+    <div class="border-l-2 border-path pl-6 sm:pl-8">
+      <ul class="grid gap-4" role="list">
+        {items.map((item) => (
+          <li class="border-b border-line pb-4 text-sm leading-7 last:border-0">{item}</li>
+        ))}
+      </ul>
+      <p class="mt-6 text-sm font-medium">下一步：{nextStep}</p>
+    </div>
+  </div>
+</section>

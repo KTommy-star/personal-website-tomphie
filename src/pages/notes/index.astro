@@ -1,0 +1,19 @@
+---
+import EmptyState from "../../components/EmptyState.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="笔记" description="按主题和系列组织的个人学习知识库。">
+  <PageIntro title="笔记" description="这不是按日期堆叠的动态列表，而是一套可以搜索、连续阅读，并与研究和项目互相连接的个人知识库。" />
+  <EmptyState
+    body="笔记区会优先保证中文长文、代码、公式、图片与引用的阅读体验。目录、搜索和系列关系将在该模块中完成。"
+    items={[
+      "计划长期记录的三到六个主题",
+      "已有笔记的 Markdown、飞书导出或其他原稿",
+      "希望组成系列的课程或专题",
+      "第一批准备公开的三篇代表笔记",
+    ]}
+    nextStep="给出笔记主题分类，并提供一篇最接近最终状态的原稿。"
+  />
+</BaseLayout>

@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../lib/paths";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="页面未找到" description="这个页面不存在，返回首页继续浏览。">
+  <section class="flex min-h-[70dvh] items-center py-20">
+    <div class="mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-10">
+      <span class="mb-8 block size-4 rounded-full bg-path" aria-hidden="true"></span>
+      <h1 class="max-w-4xl text-5xl font-semibold leading-tight sm:text-7xl">没有找到这个坐标。</h1>
+      <p class="mt-6 max-w-xl text-quiet">链接可能已经变化，也可能还没有被放进这张地图。</p>
+      <a
+        class="mt-10 inline-flex min-h-12 items-center border-b-2 border-path text-sm font-semibold no-underline hover:text-path"
+        href={withBase("/", base)}
+      >
+        返回首页
+      </a>
+    </div>
+  </section>
+</BaseLayout>

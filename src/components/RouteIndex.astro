@@ -1,0 +1,130 @@
+---
+import { navigation } from "../data/navigation";
+import { withBase } from "../lib/paths";
+
+const base = import.meta.env.BASE_URL;
+const destinations = navigation.filter((item) => item.href !== "/");
+---
+
+<section class="route-index border-t border-line py-20 sm:py-28" aria-labelledby="route-index-title">
+  <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+    <div class="mb-16 grid gap-5 md:grid-cols-2 md:items-end">
+      <h2 id="route-index-title" class="max-w-xl text-3xl font-semibold sm:text-5xl">
+        从一个坐标，走向不同的内容。
+      </h2>
+      <p class="max-w-xl text-quiet md:justify-self-end">
+        这条路径是全站的共同线索。它会随着内容逐渐完整，但不会替代清楚的文字和导航。
+      </p>
+    </div>
+
+    <div class="relative">
+      <div class="route-line" aria-hidden="true">
+        <span class="route-progress"></span>
+      </div>
+
+      <ol class="grid gap-6 sm:gap-8">
+        {destinations.map((item) => (
+          <li class="route-item">
+            <span class="route-dot" aria-hidden="true"></span>
+            <a
+              class="group grid min-h-36 gap-4 border-y border-line bg-paper py-7 no-underline sm:grid-cols-[minmax(8rem,0.65fr)_minmax(0,1fr)] sm:items-center sm:py-9"
+              href={withBase(item.href, base)}
+            >
+              <span class="text-xl font-semibold group-hover:text-path">{item.label}</span>
+              <span class="max-w-xl text-sm leading-7 text-quiet">{item.description}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+</section>
+
+<style>
+  .route-line {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0.5rem;
+    width: 0.125rem;
+    background: var(--color-line);
+  }
+
+  .route-progress {
+    position: absolute;
+    inset: 0;
+    display: block;
+    background: var(--color-path);
+    transform: scaleY(0.08);
+    transform-origin: top;
+  }
+
+  .route-item {
+    position: relative;
+    padding-inline-start: 2.5rem;
+  }
+
+  .route-dot {
+    position: absolute;
+    z-index: 10;
+    inset-block-start: 50%;
+    inset-inline-start: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 0.25rem solid var(--color-paper);
+    border-radius: 9999px;
+    background: var(--color-path);
+    transform: translateY(-50%);
+  }
+
+  @supports (animation-timeline: view()) {
+    .route-progress {
+      animation: route-grow linear both;
+      animation-range: entry 5% exit 90%;
+      animation-timeline: view();
+    }
+  }
+
+  @keyframes route-grow {
+    from {
+      transform: scaleY(0.08);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .route-progress {
+      animation: none;
+      transform: scaleY(1);
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .route-line {
+      inset-inline-start: 50%;
+      transform: translateX(-50%);
+    }
+
+    .route-item {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding-inline-start: 0;
+    }
+
+    .route-item:nth-child(odd) a {
+      grid-column: 1;
+      margin-inline-end: 3rem;
+    }
+
+    .route-item:nth-child(even) a {
+      grid-column: 2;
+      margin-inline-start: 3rem;
+    }
+
+    .route-dot {
+      inset-inline-start: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+</style>

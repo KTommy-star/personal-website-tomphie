@@ -1,0 +1,24 @@
+---
+import EmptyState from "../../components/EmptyState.astro";
+import PageIntro from "../../components/PageIntro.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="珍宝库" description="为共同经历保留的地点、物件、见闻与信件。">
+  <PageIntro
+    title="恋爱珍宝库"
+    description="这是同一座个人档案里更温柔的一间房。地点、物件、照片与文字会组成可以慢慢展开的记忆章节。"
+    accent="memory"
+  />
+  <EmptyState
+    heading="先确定边界，再放入回忆"
+    body="这里会拥有比其他栏目更丰富的叙事动效，但隐私与双方意愿先于视觉效果。私密内容不会被打包进公开网页。"
+    items={[
+      "选择公开精选版，还是需要真实身份验证的私密版",
+      "双方同意公开的照片、地点、日期与故事范围",
+      "最想保存的时间、地点、物件、见闻或信件",
+      "希望这部分给人的情绪，以及明确不喜欢的表达方式",
+    ]}
+    nextStep="先与你的伴侣共同确认公开范围和隐私模式。"
+  />
+</BaseLayout>
