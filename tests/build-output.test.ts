@@ -57,6 +57,34 @@ describe("static routes", () => {
     expect(html).not.toContain("/Users/kongsanjin");
   });
 
+  it("renders the complete life journey narrative", async () => {
+    const html = await readFile(
+      new URL("../dist/journey/index.html", import.meta.url),
+      "utf8",
+    );
+
+    for (const copy of [
+      "广东东莞",
+      "水霖学校",
+      "实验一小",
+      "巴川中学",
+      "电子科技大学",
+      "一路工作室",
+      "创新创业中心",
+      "小城大爱实践队",
+      "软件e声摄影部",
+      "尚未开始实习",
+    ]) {
+      expect(html).toContain(copy);
+    }
+    expect(html).toContain("data-journey-map");
+    expect(html).toContain("data-journey-filter");
+    expect(html).toContain('data-brand-placement="journey"');
+    expect(html).not.toContain("130 0231 1696");
+    expect(html).not.toContain("2005-03");
+    expect(html).not.toContain("/Users/kongsanjin");
+  });
+
   it("renders the TOMPHIE brand matrix across every homepage section", async () => {
     const html = await readFile(
       new URL("../dist/index.html", import.meta.url),

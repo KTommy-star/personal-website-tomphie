@@ -1,0 +1,70 @@
+---
+import type { JourneyChapter, StudentRole } from "../../data/journey";
+
+interface Props {
+  chapter: JourneyChapter;
+  studentRoles: readonly StudentRole[];
+}
+
+const { chapter, studentRoles } = Astro.props;
+---
+
+<li
+  class:list={["journey-chapter", `journey-chapter--${chapter.status}`]}
+  data-journey-chapter
+  data-category={chapter.filter}
+  data-map-target={chapter.mapPoint}
+  data-chapter-id={chapter.id}
+>
+  <article aria-labelledby={`${chapter.id}-title`}>
+    <header class="journey-chapter__header">
+      <span class="journey-chapter__index" aria-hidden="true">{chapter.index}</span>
+      <div>
+        <p class="journey-chapter__eyebrow">{chapter.eyebrow}</p>
+        <p class="journey-chapter__place">{chapter.place}</p>
+      </div>
+    </header>
+
+    <div class="journey-chapter__body">
+      <h2 id={`${chapter.id}-title`}>{chapter.title}</h2>
+      <div class="journey-chapter__copy">
+        {chapter.lines.map((line) => <p>{line}</p>)}
+      </div>
+
+      {chapter.steps && (
+        <ol class="journey-schools" aria-label="铜梁求学顺序">
+          {chapter.steps.map((step, index) => (
+            <li>
+              <span class="journey-schools__number">{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{step.title}</h3>
+                <p>{step.note}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {chapter.studentWork && (
+        <section class="journey-student-work" data-filter-group="student-work" aria-labelledby="student-work-title">
+          <div class="journey-student-work__intro">
+            <p>大学之外</p>
+            <h3 id="student-work-title">认识更多的人，也承担更多的事</h3>
+          </div>
+          <div class="journey-student-work__branches">
+            {studentRoles.map((item, index) => (
+              <details data-student-role>
+                <summary>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{item.organization}</strong>
+                  <small>{item.role}</small>
+                </summary>
+                <p>{item.note}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </article>
+</li>

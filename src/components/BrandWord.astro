@@ -1,5 +1,5 @@
 ---
-type Placement = "hero" | "story" | "focus" | "routes" | "contact";
+type Placement = "hero" | "story" | "focus" | "routes" | "contact" | "journey";
 
 interface Props {
   placement: Placement;
@@ -145,6 +145,25 @@ const letters = [..."TOMPHIE"];
     font-size: clamp(10rem, 24vw, 24rem);
   }
 
+  .brand-word--journey {
+    --brand-stroke: color-mix(in srgb, var(--color-path) 32%, transparent);
+    --matrix-rest: rotate(-7deg) skewX(-12deg) scaleX(1.08);
+    --matrix-hover: rotate(-5deg) skewX(-8deg) scaleX(1.1) translateX(0.018em);
+    --drift-start-x: -2rem;
+    --drift-start-y: 1.5rem;
+    --drift-end-x: 3rem;
+    --drift-end-y: -1rem;
+  }
+
+  .brand-word--journey .brand-word__motion {
+    inset-block-start: 17%;
+    inset-inline-start: -12vw;
+  }
+
+  .brand-word--journey .brand-word__glyphs {
+    font-size: clamp(10rem, 26vw, 27rem);
+  }
+
   .brand-word--routes {
     --brand-stroke: color-mix(in srgb, var(--color-path) 18%, transparent);
     --matrix-rest: skewX(10deg) scaleX(1.04);
@@ -198,6 +217,11 @@ const letters = [..."TOMPHIE"];
   }
 
   @media (max-width: 47.99rem) {
+    .brand-word--journey .brand-word__motion {
+      inset-block-start: 28%;
+      inset-inline-start: -54vw;
+    }
+
     .brand-word--story .brand-word__motion {
       inset-block-start: 46%;
       inset-inline-end: -6rem;

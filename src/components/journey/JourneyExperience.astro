@@ -1,0 +1,145 @@
+---
+import { journeyChapters, journeyFilters, studentRoles } from "../../data/journey";
+import { withBase } from "../../lib/paths";
+import "../../styles/journey.css";
+import BrandWord from "../BrandWord.astro";
+import JourneyChapter from "./JourneyChapter.astro";
+import JourneyMap from "./JourneyMap.astro";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<section class="journey-experience" data-journey-root aria-labelledby="journey-title">
+  <header class="brand-scene journey-hero">
+    <BrandWord placement="journey" />
+
+    <div class="journey-hero__coordinate" aria-hidden="true">
+      <span>22.9°N</span>
+      <span>→</span>
+      <span>30.6°N</span>
+    </div>
+    <div class="journey-hero__copy">
+      <p class="journey-hero__kicker">人生轨迹</p>
+      <h1 id="journey-title">
+        <span>从东莞出发</span>
+        <span>沿着成长，来到成都</span>
+      </h1>
+      <p>
+        我的经历不是一张履历表，而是一条由地点、选择与同行的人慢慢汇成的路线
+      </p>
+    </div>
+    <a class="journey-hero__start" href="#journey-route">
+      <span>沿路线向下</span>
+      <span aria-hidden="true">↓</span>
+    </a>
+  </header>
+
+  <nav class="journey-filters" aria-label="筛选人生轨迹">
+    <p>查看图层</p>
+    <div>
+      {journeyFilters.map((filter, index) => (
+        <button
+          type="button"
+          data-journey-filter={filter.value}
+          aria-pressed={index === 0 ? "true" : "false"}
+        >
+          {filter.label}
+        </button>
+      ))}
+    </div>
+  </nav>
+
+  <div class="journey-layout" id="journey-route">
+    <aside class="journey-map" aria-label="人生路线概览">
+      <JourneyMap />
+    </aside>
+
+    <ol class="journey-chapters">
+      {journeyChapters.map((chapter) => (
+        <JourneyChapter chapter={chapter} studentRoles={studentRoles} />
+      ))}
+    </ol>
+  </div>
+
+  <footer class="journey-outro">
+    <p>路线没有终点，只有此刻所在的位置</p>
+    <div>
+      <a href={withBase("/research", base)}>沿着探索继续看「科研」</a>
+      <a href={withBase("/projects", base)}>沿着实践继续看「项目」</a>
+    </div>
+  </footer>
+</section>
+
+<script>
+  import { calculateRouteProgress } from "../../lib/route-progress";
+
+  document.querySelectorAll<HTMLElement>("[data-journey-root]").forEach((root) => {
+    const chapters = Array.from(root.querySelectorAll<HTMLElement>("[data-journey-chapter]"));
+    const filters = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-journey-filter]"));
+    const map = root.querySelector<HTMLElement>("[data-journey-map]");
+    const caption = root.querySelector<HTMLElement>("[data-map-caption]");
+    const route = root.querySelector<HTMLElement>("#journey-route");
+    const studentWork = root.querySelector<HTMLElement>("[data-filter-group='student-work']");
+
+    if (!map || !caption || !route || chapters.length === 0) return;
+
+    const captions: Record<string, string> = {
+      dongguan: "广东东莞",
+      tongliang: "重庆铜梁",
+      chengdu: "四川成都",
+      future: "下一站",
+    };
+    let frame = 0;
+
+    const updateJourney = () => {
+      frame = 0;
+      const activationLine = window.innerHeight * 0.48;
+      const candidates = chapters.filter((chapter) => chapter.dataset.filtered !== "true");
+      let active = candidates[0] ?? chapters[0];
+      let shortestDistance = Number.POSITIVE_INFINITY;
+
+      for (const chapter of candidates) {
+        const rect = chapter.getBoundingClientRect();
+        const distance = Math.abs(rect.top + rect.height * 0.36 - activationLine);
+        if (distance < shortestDistance) {
+          shortestDistance = distance;
+          active = chapter;
+        }
+      }
+
+      for (const chapter of chapters) chapter.dataset.active = String(chapter === active);
+
+      const point = active.dataset.mapTarget ?? "dongguan";
+      map.dataset.activePoint = point;
+      caption.textContent = captions[point] ?? "当前坐标";
+
+      const rect = route.getBoundingClientRect();
+      const progress = calculateRouteProgress(rect.top, rect.bottom, window.innerHeight);
+      map.style.setProperty("--journey-progress", String(progress));
+    };
+
+    const requestUpdate = () => {
+      if (frame === 0) frame = window.requestAnimationFrame(updateJourney);
+    };
+
+    for (const button of filters) {
+      button.addEventListener("click", () => {
+        const selected = button.dataset.journeyFilter ?? "all";
+        for (const item of filters) item.setAttribute("aria-pressed", String(item === button));
+        for (const chapter of chapters) {
+          const matches = selected === "all" || chapter.dataset.category === selected ||
+            (selected === "student-work" && chapter.dataset.chapterId === "chengdu-university");
+          chapter.dataset.filtered = String(!matches);
+        }
+        if (studentWork) studentWork.hidden = selected !== "all" && selected !== "student-work";
+        root.dataset.selectedFilter = selected;
+        requestUpdate();
+      });
+    }
+
+    root.dataset.enhanced = "true";
+    requestUpdate();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+  });
+</script>
