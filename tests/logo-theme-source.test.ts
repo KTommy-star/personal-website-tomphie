@@ -21,6 +21,9 @@ describe("Tomphie logo integration", () => {
 
     expect(source).toContain("width: 1.5rem;");
     expect(source).toContain("width: 1.375rem;");
+    expect(source).toContain(".tomphie-logo.brand-logo");
+    expect(source).toContain('@media (max-width: 24rem) {\n    :global(.tomphie-logo.brand-logo) {');
+    expect(source).toContain("min-h-14");
   });
   it("defines persistent dark theme hooks", async () => {
     const [layout, styles, toggle] = await Promise.all([
