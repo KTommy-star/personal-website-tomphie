@@ -39,6 +39,9 @@ describe("static routes", () => {
     expect(html).toContain('data-logo-variant="icon"');
     expect(html).toContain('data-logo-variant="wordmark"');
     expect(html).toContain("data-logo-reveal");
+    expect(html).toContain("data-theme-toggle");
+    expect(html).toContain("切换到深色模式");
+    expect(html).toContain('name="theme-color"');
     expect(html).toContain("小城大爱实践队");
     expect(html).toContain("软件e声摄影部");
     expect(html).toContain('data-copy-value="ksanjin@163.com"');

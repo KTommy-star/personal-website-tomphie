@@ -7,6 +7,12 @@
   --color-line: #d3dae2;
   --color-path: #1748d2;
   --color-memory: #9b4257;
+  --color-surface: #ffffff;
+  --color-surface-glass: rgba(244, 247, 250, 0.72);
+  --color-surface-glass-hover: rgba(244, 247, 250, 0.58);
+  --color-surface-glass-mobile: rgba(244, 247, 250, 0.82);
+  --color-on-ink: #ffffff;
+  --color-on-path: #ffffff;
   --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-serif: "Songti SC", "STSong", "Noto Serif SC", serif;
 }
@@ -18,6 +24,40 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-synthesis: none;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --color-paper: #0d1015;
+    --color-ink: #f3f5f7;
+    --color-quiet: #a6afba;
+    --color-line: #2a3039;
+    --color-path: #7e9cff;
+    --color-memory: #d28aa0;
+    --color-surface: #151a21;
+    --color-surface-glass: color-mix(in srgb, var(--color-paper) 72%, transparent);
+    --color-surface-glass-hover: color-mix(in srgb, var(--color-paper) 58%, transparent);
+    --color-surface-glass-mobile: color-mix(in srgb, var(--color-paper) 82%, transparent);
+    --color-on-ink: #0d1015;
+    --color-on-path: #0d1015;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      color-scheme: dark;
+      --color-paper: #0d1015;
+      --color-ink: #f3f5f7;
+      --color-quiet: #a6afba;
+      --color-line: #2a3039;
+      --color-path: #7e9cff;
+      --color-memory: #d28aa0;
+      --color-surface: #151a21;
+      --color-surface-glass: color-mix(in srgb, var(--color-paper) 72%, transparent);
+      --color-surface-glass-hover: color-mix(in srgb, var(--color-paper) 58%, transparent);
+      --color-surface-glass-mobile: color-mix(in srgb, var(--color-paper) 82%, transparent);
+      --color-on-ink: #0d1015;
+      --color-on-path: #0d1015;
+    }
   }
 
   html {
@@ -68,12 +108,21 @@
 
   ::selection {
     background: var(--color-path);
-    color: white;
+    color: var(--color-on-path);
   }
 }
 
 .site-header {
   padding-top: env(safe-area-inset-top);
+}
+
+html.theme-ready body,
+html.theme-ready .site-header,
+html.theme-ready footer {
+  transition:
+    background-color 220ms ease-out,
+    color 220ms ease-out,
+    border-color 220ms ease-out;
 }
 
 .skip-link {
@@ -83,7 +132,7 @@
   z-index: 50;
   transform: translateY(-200%);
   background: var(--color-ink);
-  color: white;
+  color: var(--color-on-ink);
   padding: 0.75rem 1rem;
 }
 

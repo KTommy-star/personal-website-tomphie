@@ -13,4 +13,19 @@ describe("Tomphie logo integration", () => {
     expect(source).toContain("stroke-dashoffset");
     expect(source).toContain("prefers-reduced-motion: no-preference");
   });
+  it("defines persistent dark theme hooks", async () => {
+    const [layout, styles, toggle] = await Promise.all([
+      readFile(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8"),
+      readFile(new URL("../src/styles/global.css", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/ThemeToggle.astro", import.meta.url), "utf8"),
+    ]);
+
+    expect(layout).toContain("tomphie-theme");
+    expect(layout).toContain("prefers-color-scheme: dark");
+    expect(styles).toContain(':root[data-theme="dark"]');
+    expect(styles).toContain("--color-surface:");
+    expect(styles).toContain("color-scheme: dark");
+    expect(toggle).toContain("data-theme-toggle");
+    expect(toggle).toContain("切换到深色模式");
+  });
 });

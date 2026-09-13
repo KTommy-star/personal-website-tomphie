@@ -1,5 +1,6 @@
 ---
 import TomphieLogo from "./TomphieLogo.astro";
+import ThemeToggle from "./ThemeToggle.astro";
 import { navigation } from "../data/navigation";
 import { withBase } from "../lib/paths";
 
@@ -50,32 +51,36 @@ const isCurrent = (href: string) => {
       </ul>
     </nav>
 
-    <details class="mobile-menu relative md:hidden">
-      <summary class="flex min-h-11 cursor-pointer list-none items-center px-2 text-sm font-medium">
-        菜单
-      </summary>
-      <nav
-        class="absolute right-0 top-full z-40 mt-2 w-52 border border-line bg-paper p-2 shadow-lg"
-        aria-label="移动端主导航"
-      >
-        <ul class="grid gap-1" role="list">
-          {navigation.map((item) => (
-            <li>
-              <a
-                class:list={[
-                  "flex min-h-11 items-center px-3 text-sm no-underline transition-colors duration-150",
-                  isCurrent(item.href) ? "bg-ink text-white" : "text-ink hover:bg-white",
-                ]}
-                href={withBase(item.href, base)}
-                aria-current={isCurrent(item.href) ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </details>
+    <div class="header-actions inline-flex items-center gap-2">
+      <ThemeToggle />
+
+      <details class="mobile-menu relative md:hidden">
+        <summary class="flex min-h-11 cursor-pointer list-none items-center px-2 text-sm font-medium">
+          菜单
+        </summary>
+        <nav
+          class="absolute right-0 top-full z-40 mt-2 w-52 border border-line bg-paper p-2 shadow-lg"
+          aria-label="移动端主导航"
+        >
+          <ul class="grid gap-1" role="list">
+            {navigation.map((item) => (
+              <li>
+                <a
+                  class:list={[
+                    "flex min-h-11 items-center px-3 text-sm no-underline transition-colors duration-150",
+                    isCurrent(item.href) ? "bg-ink text-on-ink" : "text-ink hover:bg-surface",
+                  ]}
+                  href={withBase(item.href, base)}
+                  aria-current={isCurrent(item.href) ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </details>
+    </div>
   </div>
 </header>
 
