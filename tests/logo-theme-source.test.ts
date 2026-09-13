@@ -13,6 +13,15 @@ describe("Tomphie logo integration", () => {
     expect(source).toContain("stroke-dashoffset");
     expect(source).toContain("prefers-reduced-motion: no-preference");
   });
+  it("keeps the header logo compact", async () => {
+    const source = await readFile(
+      new URL("../src/components/SiteHeader.astro", import.meta.url),
+      "utf8",
+    );
+
+    expect(source).toContain("width: 1.5rem;");
+    expect(source).toContain("width: 1.375rem;");
+  });
   it("defines persistent dark theme hooks", async () => {
     const [layout, styles, toggle] = await Promise.all([
       readFile(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8"),
