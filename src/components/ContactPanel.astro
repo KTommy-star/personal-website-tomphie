@@ -9,29 +9,32 @@ const copyContacts = [
 ];
 ---
 
-<section class="brand-scene relative overflow-hidden py-20 sm:py-24 lg:py-28" aria-labelledby="contact-title">
+<section class="brand-scene contact-section section-space relative overflow-hidden" aria-labelledby="contact-title">
   <BrandWord placement="contact" />
 
-  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="grid gap-10 border-y border-line py-12 sm:py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:items-end">
+  <div class="shell relative z-10">
+    <div class="contact-sheet glass" data-glass-light>
       <div>
+        <p class="eyebrow mb-8">04 / 与我相遇</p>
         <p class="font-serif text-2xl leading-relaxed text-path sm:text-3xl">“{profile.quote}”</p>
-        <h2 id="contact-title" class="mt-6 text-balance text-4xl font-semibold leading-[1.14] sm:text-6xl">
+        <h2 id="contact-title" class="editorial-title mt-6">
           <span class="block">好好规划未来的路</span>
           <span class="block">也认真过好当下</span>
         </h2>
-        <p class="mt-6 max-w-2xl text-pretty text-lg leading-8 text-quiet">
+        <p class="mt-6 max-w-2xl text-pretty text-sm leading-8 text-quiet">
           <span class="block">好好吃饭 好好生活 好好恋爱</span>
           <span class="block">研究交流 项目合作 有趣想法 都欢迎联系我</span>
         </p>
       </div>
 
-      <div class="contact-list border-t border-line lg:justify-self-stretch">
+      <div class="contact-list lg:justify-self-stretch">
+        <p class="contact-invitation">让一场对话，成为新的起点 <span aria-hidden="true">↗</span></p>
         {copyContacts.map((contact) => (
           <button
             class="contact-action"
             type="button"
             data-copy-value={contact.value}
+            data-press
             aria-label={`复制${contact.label} ${contact.value}`}
           >
             <span class="contact-label">{contact.label}</span>
@@ -40,7 +43,7 @@ const copyContacts = [
           </button>
         ))}
 
-        <a class="contact-action" href={profile.github} target="_blank" rel="noreferrer">
+        <a class="contact-action" data-press href={profile.github} target="_blank" rel="noreferrer">
           <span class="contact-label">GitHub</span>
           <span class="contact-value">{profile.githubLabel}</span>
           <span class="contact-state">打开</span>
@@ -89,11 +92,18 @@ const copyContacts = [
 </script>
 
 <style>
+  .contact-section { padding-block: 7rem; }
+  .contact-sheet { display: grid; grid-template-columns: 1.15fr 1fr; gap: 4rem; align-items: end; padding: 3rem; border-radius: 2rem; background: var(--color-surface-glass-strong); }
+  .contact-sheet .editorial-title { font-size: clamp(2rem, 3.2vw, 3rem); }
+  .contact-sheet > div > p.font-serif { font-size: 1.2rem; }
+  .contact-invitation { display: flex; justify-content: space-between; padding-bottom: 1.5rem; font-size: .8rem; border-bottom: 1px solid var(--color-line); }
+  @media (max-width: 63.99rem) { .contact-sheet { gap: 2.5rem; padding: 2rem; } }
+  @media (max-width: 47.99rem) { .contact-section { padding-block: 4.5rem; } .contact-sheet { grid-template-columns: 1fr; padding: 1.5rem; border-radius: 1.4rem; } }
   .contact-action {
     display: grid;
     width: 100%;
     min-height: 3.5rem;
-    grid-template-columns: 4rem minmax(0, 1fr) auto;
+    grid-template-columns: 3rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.75rem;
     border: 0;
@@ -112,10 +122,6 @@ const copyContacts = [
 
   .contact-action:hover {
     color: var(--color-path);
-  }
-
-  .contact-action:active {
-    transform: scale(0.985);
   }
 
   .contact-label,

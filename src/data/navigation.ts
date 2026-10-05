@@ -30,9 +30,4 @@ export const navigation: NavigationItem[] = [
     href: "/notes",
     description: "按主题和系列组织的长期学习知识库",
   },
-  {
-    label: "珍宝库",
-    href: "/treasure",
-    description: "经过共同确认后保存的地点、物件与故事",
-  },
 ];

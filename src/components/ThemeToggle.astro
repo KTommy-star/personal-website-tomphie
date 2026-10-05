@@ -5,9 +5,8 @@
   aria-pressed="false"
   data-theme-toggle
 >
-  <span class="theme-toggle__symbol" aria-hidden="true">
-    <span class="theme-toggle__orb"></span>
-  </span>
+  <svg class="theme-sun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+  <svg class="theme-moon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5Z"/></svg>
 </button>
 
 <script>
@@ -34,7 +33,7 @@
     root.style.colorScheme = theme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#0D1015" : "#F4F7FA");
+      ?.setAttribute("content", theme === "dark" ? "#081C27" : "#EDF4F3");
 
     document
       .querySelectorAll<HTMLButtonElement>("[data-theme-toggle]")
@@ -73,12 +72,13 @@
 
 <style>
   .theme-toggle {
+    position: relative;
     display: inline-flex;
     min-width: 2.75rem;
     min-height: 2.75rem;
     align-items: center;
     justify-content: center;
-    border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
+    border: 0;
     border-radius: 9999px;
     background: transparent;
     color: var(--color-ink);
@@ -90,27 +90,10 @@
       transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .theme-toggle__symbol {
-    display: inline-flex;
-    width: 1.35rem;
-    height: 0.8rem;
-    align-items: center;
-    padding: 0.125rem;
-    border: 1px solid currentColor;
-    border-radius: 9999px;
-  }
-
-  .theme-toggle__orb {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 9999px;
-    background: currentColor;
-    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .theme-toggle[aria-pressed="true"] .theme-toggle__orb {
-    transform: translateX(0.55rem);
-  }
+  .theme-sun, .theme-moon { position: absolute; transition: opacity 350ms ease, transform 550ms cubic-bezier(.22,1,.36,1); }
+  .theme-moon { opacity: 0; transform: rotate(-60deg) scale(.5); }
+  .theme-toggle[aria-pressed="true"] .theme-sun { opacity: 0; transform: rotate(60deg) scale(.5); }
+  .theme-toggle[aria-pressed="true"] .theme-moon { opacity: 1; transform: rotate(0) scale(1); }
 
   @media (hover: hover) {
     .theme-toggle:hover {
@@ -123,7 +106,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .theme-toggle,
-    .theme-toggle__orb {
+    .theme-sun, .theme-moon {
       transition: none;
     }
   }

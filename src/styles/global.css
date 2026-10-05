@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f4f7fa;
-  --color-ink: #111419;
-  --color-quiet: #555e68;
-  --color-line: #d3dae2;
-  --color-path: #1748d2;
-  --color-memory: #9b4257;
-  --color-surface: #ffffff;
-  --color-surface-glass: rgba(244, 247, 250, 0.72);
-  --color-surface-glass-hover: rgba(244, 247, 250, 0.58);
-  --color-surface-glass-mobile: rgba(244, 247, 250, 0.82);
+  --color-paper: #edf4f3;
+  --color-ink: #173436;
+  --color-quiet: #4b6668;
+  --color-line: #bdcfcc;
+  --color-path: #24605e;
+  --color-surface: #f5faf7;
+  --color-surface-glass: rgba(248, 253, 250, 0.14);
+  --color-surface-glass-strong: rgba(248, 253, 250, 0.24);
+  --color-surface-glass-hover: rgba(248, 253, 250, 0.22);
+  --color-surface-glass-mobile: rgba(248, 253, 250, 0.22);
   --color-on-ink: #ffffff;
   --color-on-path: #ffffff;
   --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -28,35 +28,35 @@
 
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --color-paper: #0d1015;
-    --color-ink: #f3f5f7;
-    --color-quiet: #a6afba;
-    --color-line: #2a3039;
-    --color-path: #7e9cff;
-    --color-memory: #d28aa0;
-    --color-surface: #151a21;
-    --color-surface-glass: color-mix(in srgb, var(--color-paper) 72%, transparent);
-    --color-surface-glass-hover: color-mix(in srgb, var(--color-paper) 58%, transparent);
-    --color-surface-glass-mobile: color-mix(in srgb, var(--color-paper) 82%, transparent);
-    --color-on-ink: #0d1015;
-    --color-on-path: #0d1015;
+    --color-paper: #081c27;
+    --color-ink: #e8f3ef;
+    --color-quiet: #b0c8c9;
+    --color-line: #38565f;
+    --color-path: #a5d5c7;
+    --color-surface: #102c37;
+    --color-surface-glass: rgba(18, 48, 60, 0.18);
+    --color-surface-glass-strong: rgba(18, 48, 60, 0.28);
+    --color-surface-glass-hover: rgba(35, 67, 78, 0.26);
+    --color-surface-glass-mobile: rgba(18, 48, 60, 0.26);
+    --color-on-ink: #081c27;
+    --color-on-path: #081c27;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       color-scheme: dark;
-      --color-paper: #0d1015;
-      --color-ink: #f3f5f7;
-      --color-quiet: #a6afba;
-      --color-line: #2a3039;
-      --color-path: #7e9cff;
-      --color-memory: #d28aa0;
-      --color-surface: #151a21;
-      --color-surface-glass: color-mix(in srgb, var(--color-paper) 72%, transparent);
-      --color-surface-glass-hover: color-mix(in srgb, var(--color-paper) 58%, transparent);
-      --color-surface-glass-mobile: color-mix(in srgb, var(--color-paper) 82%, transparent);
-      --color-on-ink: #0d1015;
-      --color-on-path: #0d1015;
+      --color-paper: #081c27;
+      --color-ink: #e8f3ef;
+      --color-quiet: #b0c8c9;
+      --color-line: #38565f;
+      --color-path: #a5d5c7;
+      --color-surface: #102c37;
+      --color-surface-glass: rgba(18, 48, 60, 0.18);
+      --color-surface-glass-strong: rgba(18, 48, 60, 0.28);
+      --color-surface-glass-hover: rgba(35, 67, 78, 0.26);
+      --color-surface-glass-mobile: rgba(18, 48, 60, 0.26);
+      --color-on-ink: #081c27;
+      --color-on-path: #081c27;
     }
   }
 
@@ -66,11 +66,12 @@
   }
 
   body {
+    isolation: isolate;
     min-width: 20rem;
     min-height: 100dvh;
     margin: 0;
     overflow-x: clip;
-    background: var(--color-paper);
+    background: transparent;
     color: var(--color-ink);
     line-height: 1.65;
     text-rendering: optimizeLegibility;
@@ -94,8 +95,8 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    a:not(.skip-link):active,
-    button:active,
+    a:not(.skip-link):not([data-press]):active,
+    button:not([data-press]):active,
     summary:active {
       transform: scale(0.985);
     }
@@ -120,9 +121,38 @@ html.theme-ready body,
 html.theme-ready .site-header,
 html.theme-ready footer {
   transition:
-    background-color 220ms ease-out,
-    color 220ms ease-out,
-    border-color 220ms ease-out;
+    background-color 700ms ease,
+    color 700ms ease,
+    border-color 700ms ease;
+}
+
+.shell { width: min(100% - 3rem, 75rem); margin-inline: auto; }
+main { padding-top: 6rem; }
+.section-space { padding-block: clamp(4.5rem, 8vw, 8rem); }
+.eyebrow { display: flex; align-items: center; gap: .7rem; font-size: .7rem; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--color-quiet); }
+.eyebrow::before { content: ""; width: 1.4rem; height: 1px; background: currentColor; }
+.editorial-title { font-family: var(--font-serif); font-weight: 500; font-size: clamp(2.15rem, 4.1vw, 3.75rem); line-height: 1.45; letter-spacing: -.035em; }
+/* Keep the standard declaration last: CSS minification can otherwise drop it. */
+.glass { position: relative; background: var(--color-surface-glass); border: 1px solid color-mix(in srgb, var(--color-surface) 42%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.48), inset 0 -1px 0 rgba(255,255,255,.12), 0 14px 48px rgba(19,51,55,.07); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
+.glass::before { content: ""; position: absolute; inset: 2px; border: 1px solid rgba(255,255,255,.18); border-radius: inherit; pointer-events: none; }
+.glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(ellipse at var(--pointer-x, 15%) var(--pointer-y, 0%), rgba(255,255,255,.16), transparent 55%); opacity: .45; transition: opacity 200ms ease; }
+.glass { isolation: isolate; }
+.glass::after { z-index: -1; }
+.glass:hover::after { opacity: .75; }
+.glass, .reading-surface { transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease, box-shadow 700ms ease; }
+.reading-surface { background: color-mix(in srgb, var(--color-paper) 80%, transparent); }
+.pill-link { display: inline-flex; min-height: 3rem; align-items: center; justify-content: center; gap: 1rem; padding: .7rem 1.4rem; border-radius: 999px; text-decoration: none; font-size: .85rem; font-weight: 500; }
+.pill-link svg { width: 1rem; height: 1rem; }
+.pill-link--solid { background: var(--color-ink); color: var(--color-on-ink); }
+.pill-link--plain { color: var(--color-ink); }
+.section-serial { font-family: Georgia, serif; font-size: .8rem; color: var(--color-quiet); letter-spacing: .05em; }
+@media (min-width: 48rem) { .shell { width: min(100% - 5rem, 75rem); } }
+@media (max-width: 24rem) { .shell { width: calc(100% - 2rem); } }
+@supports not (backdrop-filter: blur(1px)) { :root body .glass { background: var(--color-surface); color: var(--color-ink); } }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root body .reading-surface { background: var(--color-paper); }
+  :root body .glass::after { display: none; }
 }
 
 .skip-link {

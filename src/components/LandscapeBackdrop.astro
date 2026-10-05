@@ -1,0 +1,43 @@
+---
+import { Image } from "astro:assets";
+import day from "../assets/landscape/day.png";
+import night from "../assets/landscape/night.png";
+---
+
+<div class="landscape" aria-hidden="true">
+  <div class="landscape-image landscape-day" data-landscape-day>
+    <Image src={day} format="webp" quality={82} widths={[640, 1024, 1672]} sizes="(max-aspect-ratio: 16/9) 178vh, 100vw" alt="" loading="eager" fetchpriority="high" />
+  </div>
+  <div class="landscape-image landscape-night" data-landscape-night>
+    <Image src={night} format="webp" quality={82} widths={[640, 1024, 1672]} sizes="(max-aspect-ratio: 16/9) 178vh, 100vw" alt="" loading="eager" />
+  </div>
+  <div class="landscape-light"></div>
+  <div class="landscape-veil"></div>
+  <span class="scene-sun"></span>
+  <span class="scene-moon"></span>
+</div>
+
+<style>
+  .landscape { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--color-paper); }
+  .landscape-image, .landscape-light, .landscape-veil { position: absolute; inset: 0; }
+  .landscape-image :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 58% center; }
+  .landscape-night { opacity: 0; }
+  :global([data-theme="dark"]) .landscape-night { opacity: 1; }
+  .landscape-light { background: linear-gradient(90deg, rgba(243,248,246,.75), rgba(238,245,243,.12) 58%, transparent); }
+  :global([data-theme="dark"]) .landscape-light { opacity: 0; }
+  .landscape-veil { background: linear-gradient(90deg, rgba(7,24,32,.75), rgba(7,24,32,.15) 65%, transparent); opacity: 0; }
+  :global([data-theme="dark"]) .landscape-veil { opacity: 1; }
+  .scene-sun, .scene-moon { position: absolute; top: 20%; right: 24%; width: 2rem; height: 2rem; border-radius: 50%; }
+  .scene-sun { background: #fffbe4; box-shadow: 0 0 38px 14px rgba(255,244,208,.32); opacity: .8; }
+  .scene-moon { background: #eef5f3; box-shadow: 0 0 25px 4px rgba(208,231,238,.2), inset -7px -3px 0 #8da7b3; opacity: 0; transform: translateY(28px); }
+  :global([data-theme="dark"]) .scene-sun { opacity: 0; transform: translateY(-28px); }
+  :global([data-theme="dark"]) .scene-moon { opacity: .85; transform: translateY(0); }
+  :global(.theme-ready) .landscape-image, :global(.theme-ready) .landscape-light, :global(.theme-ready) .landscape-veil { transition: opacity 900ms cubic-bezier(.3,0,.2,1); }
+  :global(.theme-ready) .scene-sun, :global(.theme-ready) .scene-moon { transition: opacity 700ms ease, transform 900ms cubic-bezier(.3,0,.2,1); }
+  @media (max-width: 47.99rem) {
+    .landscape-image :global(img) { object-position: 54% center; }
+    .landscape-light { background: rgba(240,247,245,.3); }
+    .landscape-veil { background: rgba(5,22,32,.35); }
+    .scene-sun, .scene-moon { right: 15%; top: 13%; width: 1.5rem; height: 1.5rem; }
+  }
+</style>

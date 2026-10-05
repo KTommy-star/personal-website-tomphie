@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const pages = [
@@ -7,11 +7,25 @@ const pages = [
   ["research/index.html", "科研"],
   ["projects/index.html", "项目"],
   ["notes/index.html", "笔记"],
-  ["treasure/index.html", "珍宝库"],
   ["404.html", "没有找到这个坐标"],
 ] as const;
 
 describe("static routes", () => {
+  it("does not publish the retired section or link to it", async () => {
+    await expect(
+      access(new URL("../dist/treasure/index.html", import.meta.url)),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    for (const [file] of pages) {
+      const html = await readFile(
+        new URL(`../dist/${file}`, import.meta.url),
+        "utf8",
+      );
+      expect(html).not.toContain("/treasure");
+      expect(html).not.toContain("珍宝库");
+    }
+  });
+
   for (const [file, heading] of pages) {
     it(`renders ${file}`, async () => {
       const html = await readFile(
@@ -55,7 +69,7 @@ describe("static routes", () => {
     expect(html).toContain('data-story-node');
     expect(html).not.toContain("resume-kong-junxin.pdf");
     expect(html).not.toContain("孔俊鑫 · PDF");
-    expect(html).toContain('alt="孔俊鑫在湖边的个人照片"');
+    expect(html).toContain('alt="孔俊鑫的湖畔复古插画头像"');
     expect(html).not.toContain('href="mailto:');
     expect(html).not.toContain("/Users/kongsanjin");
   });

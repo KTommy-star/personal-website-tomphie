@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <g fill="none" stroke="#FFFFFF" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <!-- top bar -->
+    <path stroke-width="38" d="M 47 186 C 171 158 311 132 433 118"/>
+    <!-- T stem hanging from bar -->
+    <path d="M 144 174 C 138 236 124 304 108 366"/>
+    <!-- o, fitted between T and dashes -->
+    <path d="M 250 254
+             C 238 240 206 240 191 263
+             C 176 286 178 315 199 329
+             C 220 343 248 335 258 314
+             C 264 300 262 272 250 254"/>
+    <!-- three speed dashes, even and detached -->
+    <path d="M 321 226 C 343 223 371 220 395 218"/>
+    <path d="M 317 290 C 341 287 371 284 395 282"/>
+    <path d="M 313 354 C 339 351 369 348 395 346"/>
+  </g>
+</svg>

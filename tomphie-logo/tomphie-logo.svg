@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="33 45 913 481">
+  <g fill="none" stroke="#000000" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <!-- top bar -->
+    <path stroke-width="38" d="M 74 204 C 290 158 520 112 758 88"/>
+    <!-- T stem hanging from bar -->
+    <path d="M 240 186 C 232 258 210 340 186 410"/>
+    <!-- o -> m -> p stem/descender, one flowing stroke -->
+    <path d="M 372 268
+             C 352 246 306 246 284 278
+             C 262 310 266 352 296 370
+             C 326 388 366 378 380 348
+             C 388 328 392 300 400 280
+             C 410 258 428 248 440 262
+             C 448 278 447 314 446 348
+             C 452 300 462 258 482 250
+             C 498 244 510 252 514 268
+             C 517 290 516 320 515 348
+             C 513 400 510 440 507 486"/>
+    <!-- p bowl: one streamlined flowing loop -->
+    <path d="M 516 264
+             C 542 246 580 240 608 252
+             C 638 266 646 298 634 322
+             C 622 346 580 354 550 346
+             C 534 344 515 332 515 344"/>
+    <!-- h stem, fused into p bowl right curve -->
+    <path d="M 666 168 C 664 240 664 300 663 348"/>
+    <!-- h arch into i stem (h right vertical doubles as i) -->
+    <path d="M 665 272
+             C 674 248 702 240 726 246
+             C 744 252 756 268 757 292
+             C 758 314 757 332 756 350"/>
+    <!-- i dot dash -->
+    <path d="M 744 187 C 752 185 760 183 768 181"/>
+    <!-- three speed dashes, even and detached -->
+    <path d="M 816 184 C 844 180 880 177 908 174"/>
+    <path d="M 812 260 C 842 256 880 253 908 250"/>
+    <path d="M 808 336 C 840 332 880 329 908 326"/>
+  </g>
+</svg>

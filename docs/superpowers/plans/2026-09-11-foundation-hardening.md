@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Do not invent personal facts, achievements, dates, locations, or memories.
-- Private treasure entries default to private and must never be queried into public pages without an explicit visibility filter.
+- Private entries must never be queried into public pages without an explicit visibility filter.
 - GitHub project pages and custom-domain root deployments must both produce correct internal URLs.
 - Preserve native scrolling and a complete reduced-motion state.
 - Add no package unless the existing toolchain cannot provide the required behavior.
@@ -28,15 +28,14 @@
 - Create: `src/content/research/.gitkeep`
 - Create: `src/content/projects/.gitkeep`
 - Create: `src/content/notes/.gitkeep`
-- Create: `src/content/treasure/.gitkeep`
 
 **Interfaces:**
-- Produces Astro collections named `journey`, `research`, `projects`, `notes`, and `treasure`.
+- Produces Astro collections named `journey`, `research`, `projects`, and `notes`.
 - Every collection provides title, summary, dates, tags, draft state, visibility, and related-content identifiers plus its own domain fields.
 
 - [ ] Define a shared Zod schema with strict strings, coerced dates, `public | private` visibility, empty tag and relation defaults, and `draft: true` by default.
-- [ ] Extend the shared schema for journey type/place/role/coordinates, research kind/status/authors/contribution/links, project challenge/role/outcome/links, note topic/series/order, and treasure kind/place/consent.
-- [ ] Configure `glob()` loaders against the five local Markdown directories with the exact pattern `**/[^_]*.{md,mdx}`.
+- [ ] Extend the shared schema for journey type/place/role/coordinates, research kind/status/authors/contribution/links, project challenge/role/outcome/links, and note topic/series/order.
+- [ ] Configure `glob()` loaders against the four local Markdown directories with the exact pattern `**/[^_]*.{md,mdx}`.
 - [ ] Run `npm run check`; expect 0 errors and 0 warnings.
 
 ### Task 2: SEO and deployment without personal placeholders

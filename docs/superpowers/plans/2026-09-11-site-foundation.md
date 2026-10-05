@@ -1,5 +1,7 @@
 # Personal Website Foundation Implementation Plan
 
+Historical foundation plan. Navigation scope was updated on 2026-10-05; consult the current visual redesign directions before new design work.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build module 0 as a deployable, accessible Astro foundation with the approved content routes, shared design system, motion-safe homepage scaffold, and a clear content handoff guide.
@@ -12,7 +14,7 @@
 
 ## Global Constraints
 
-- Keep all six primary destinations: 首页、人生轨迹、科研、项目、笔记、珍宝库.
+- Keep all five primary destinations: 首页、人生轨迹、科研、项目、笔记.
 - Preserve native browser scrolling; do not implement scroll-jacking.
 - Every animation must have a readable static final state and respect `prefers-reduced-motion`.
 - Use one global accent per view; avoid gradients, glow, stock card grids, and decorative animation.
@@ -119,7 +121,7 @@ describe("site foundation", () => {
 
   it("exposes the approved primary navigation in order", () => {
     expect(navigation.map((item) => item.label)).toEqual([
-      "首页", "人生轨迹", "科研", "项目", "笔记", "珍宝库",
+      "首页", "人生轨迹", "科研", "项目", "笔记",
     ]);
   });
 
@@ -134,9 +136,9 @@ describe("site foundation", () => {
 Run: `npm test -- tests/navigation.test.ts`  
 Expected: FAIL because the two data modules do not exist.
 
-- [ ] **Step 3: Add the exact site metadata and six navigation records**
+- [ ] **Step 3: Add the exact site metadata and five navigation records**
 
-Use the names and paths `/`, `/journey`, `/research`, `/projects`, `/notes`, and `/treasure`. Descriptions must explain the content in plain Chinese rather than marketing language.
+Use the names and paths `/`, `/journey`, `/research`, `/projects`, and `/notes`. Descriptions must explain the content in plain Chinese rather than marketing language.
 
 - [ ] **Step 4: Run the focused test**
 
@@ -159,7 +161,7 @@ Expected: 3 passing tests, 0 failures.
 
 - [ ] **Step 1: Define Tailwind 4 imports and the approved color/type/spacing tokens**
 
-Use `@import "tailwindcss"`, semantic paper/ink/quiet/line/path/memory colors, visible `:focus-visible`, balanced headings, pretty body wrapping, and a reduced-motion override. Use `min-height: 100dvh`; do not use `100vh`.
+Use `@import "tailwindcss"`, semantic paper/ink/quiet/line/path colors, visible `:focus-visible`, balanced headings, pretty body wrapping, and a reduced-motion override. Use `min-height: 100dvh`; do not use `100vh`.
 
 - [ ] **Step 2: Build the document layout with semantic landmarks**
 
@@ -189,12 +191,11 @@ Expected: 0 errors.
 - Create: `src/pages/research/index.astro`
 - Create: `src/pages/projects/index.astro`
 - Create: `src/pages/notes/index.astro`
-- Create: `src/pages/treasure/index.astro`
 - Create: `src/pages/404.astro`
 
 **Interfaces:**
 - Consumes: `navigation`, `site`, and the shared layout.
-- Produces: seven buildable public routes and a 404 page, each with a single `h1` and honest content placeholders.
+- Produces: five buildable public routes and a 404 page, each with a single `h1` and honest content placeholders.
 
 - [ ] **Step 1: Write build-output tests for every required route**
 
@@ -208,7 +209,6 @@ const pages = [
   ["research/index.html", "科研"],
   ["projects/index.html", "项目"],
   ["notes/index.html", "笔记"],
-  ["treasure/index.html", "珍宝库"],
   ["404.html", "没有找到这个坐标"],
 ] as const;
 
@@ -230,16 +230,16 @@ Expected: FAIL because the required page files do not exist.
 
 - [ ] **Step 3: Build the homepage editorial route index**
 
-Create one `h1`, current-position copy, one primary link to `/journey`, and a vertical path that connects all six destinations. Use a CSS `view()` animation only inside `@supports (animation-timeline: view())`; animate `transform: scaleY()` and keep the static line visible otherwise.
+Create one `h1`, current-position copy, one primary link to `/journey`, and a vertical path that connects all five destinations. Use a CSS `view()` animation only inside `@supports (animation-timeline: view())`; animate `transform: scaleY()` and keep the static line visible otherwise.
 
-- [ ] **Step 4: Build honest scaffolds for the five remaining sections and the 404 page**
+- [ ] **Step 4: Build honest scaffolds for the four remaining sections and the 404 page**
 
-Each page explains its purpose and lists the exact information the user will later provide. The treasure page must state that privacy mode will be selected before personal media is added. Empty states must offer one clear next action, never fake achievements or sample memories.
+Each page explains its purpose and lists the exact information the user will later provide. Empty states must offer one clear next action, never fake achievements.
 
 - [ ] **Step 5: Build and run the route test**
 
 Run: `npm run build && npm test -- tests/build-output.test.ts`  
-Expected: 7 passing route tests, 0 failures.
+Expected: 6 passing route tests, 0 failures.
 
 ### Task 5: Content handoff, CI, and full verification
 
@@ -255,7 +255,7 @@ Expected: 7 passing route tests, 0 failures.
 
 - [ ] **Step 1: Document the content request format**
 
-List the required identity, journey, research, project, note, contact, image-rights, and treasure-privacy fields. Mark only email, domain, social links, dates, places, copy, media, and privacy choice as user-provided inputs; do not invent values.
+List the required identity, journey, research, project, note, contact, and image-rights fields. Mark only email, domain, social links, dates, places, copy, media, and publishing consent as user-provided inputs; do not invent values.
 
 - [ ] **Step 2: Add CI and local verification**
 

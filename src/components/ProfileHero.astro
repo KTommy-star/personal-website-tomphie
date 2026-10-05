@@ -1,116 +1,88 @@
 ---
 import { Picture } from "astro:assets";
-import profilePhoto from "../assets/profile.jpg";
+import profileArtwork from "../assets/profile-artwork.png";
 import { profile } from "../data/profile";
+import { withBase } from "../lib/paths";
 import BrandWord from "./BrandWord.astro";
 import TomphieLogo from "./TomphieLogo.astro";
+const base = import.meta.env.BASE_URL;
 ---
 
-<section class="brand-scene home-hero relative overflow-hidden pb-20 pt-12 sm:pb-24 sm:pt-16 lg:pb-28 lg:pt-20" aria-labelledby="home-title">
+<section class="brand-scene home-hero" aria-labelledby="home-title">
   <BrandWord placement="hero" />
-
-  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="hero-copy grid gap-8 lg:grid-cols-[minmax(0,1.55fr)_minmax(20rem,0.75fr)] lg:items-end">
-      <div class="hero-identity">
-        <TomphieLogo variant="wordmark" reveal class="hero-logo" />
-        <h1 id="home-title" class="hero-title text-balance font-semibold leading-[0.9]">
-          <span class="block text-[clamp(4.25rem,12vw,9.5rem)]">孔俊鑫</span>
-          <span class="mt-3 block text-[clamp(2.25rem,5.5vw,4.75rem)] text-path">Tommy</span>
-        </h1>
+  <div class="shell hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">A personal landscape · 个人山水</p>
+      <h1 id="home-title">{profile.name}<span>Tommy <span class="name-separator">/</span> sanjin</span></h1>
+      <p class="hero-intro">UESTCer，也是一个<br />认真生活、持续探索的人</p>
+      <p class="hero-belief">{profile.heroLines.map(line => <span>{line}</span>)}</p>
+      <div class="hero-actions">
+        <a class="pill-link pill-link--solid" data-press href={withBase("/journey", base)}>认识我的来路 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></a>
+        <a class="pill-link pill-link--plain" data-press href="#contact-title">打个招呼 <span aria-hidden="true">↗</span></a>
       </div>
-
-      <div class="hero-support max-w-xl lg:pb-2">
-        <p class="text-sm text-quiet">四川成都 · 电子科技大学</p>
-        <p class="mt-5 text-pretty text-lg leading-8 sm:text-xl">
-          {profile.heroLines.map((line) => <span class="block">{line}</span>)}
-        </p>
-        <p class="mt-5 text-sm text-quiet">也叫 {profile.aliases.join(" / ")}</p>
-      </div>
+      <div class="hero-signature"><TomphieLogo variant="wordmark" reveal class="hero-logo" /><span>念念不忘，必有回响</span></div>
     </div>
 
-    <figure class="portrait-frame mt-12 overflow-hidden bg-line sm:mt-16">
-      <div class="portrait-media">
-        <Picture
-          src={profilePhoto}
-          formats={["avif", "webp"]}
-          widths={[480, 768, 1200, 1600]}
-          sizes="(max-width: 640px) 100vw, (max-width: 1280px) 92vw, 1200px"
-          alt="孔俊鑫在湖边的个人照片"
-          loading="eager"
-          fetchpriority="high"
-          decoding="async"
-        />
-      </div>
-      <figcaption class="flex flex-wrap justify-between gap-2 border-t border-line bg-paper px-4 py-3 text-xs text-quiet sm:px-5">
-        <span>Tomphie / sanjin</span>
-        <span>好好吃饭 好好生活</span>
-      </figcaption>
-    </figure>
+    <div class="hero-portrait" data-portrait-drift>
+      <span class="portrait-orbit" aria-hidden="true"></span>
+      <span class="portrait-note">好好生活 / LIVE WITH INTENTION</span>
+      <figure class="portrait-frame">
+        <div class="portrait-art">
+          <Picture src={profileArtwork} formats={["avif", "webp"]} widths={[640, 1008, 1122]} sizes="(max-width: 640px) 140vw, (max-width: 1024px) 80vw, 760px" alt="孔俊鑫的湖畔复古插画头像" loading="eager" fetchpriority="high" decoding="async" />
+        </div>
+        <figcaption class="portrait-caption glass" data-glass-light><span class="portrait-caption__dot"></span><span>四川成都 · 电子科技大学</span><span aria-hidden="true">↗</span></figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="shell hero-bottom">
+    <p class="scroll-cue"><span aria-hidden="true">↓</span> 向下探索 <span class="scroll-cue__en">SCROLL TO WANDER</span></p>
+    <div class="identity-band glass" data-glass-light><p class="eyebrow">当下的身份</p><ul role="list">{profile.roles.map(role => <li>{role}</li>)}</ul></div>
   </div>
 </section>
 
 <style>
-  .portrait-media {
-    aspect-ratio: 4 / 5;
-  }
-
-  .portrait-media :global(picture),
-  .portrait-media :global(img) {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .portrait-media :global(img) {
-    object-fit: cover;
-    object-position: 39% center;
-  }
-
-  @media (min-width: 40rem) {
-    .portrait-media {
-      aspect-ratio: 16 / 9;
-    }
-
-    .portrait-media :global(img) {
-      object-position: center;
-    }
-  }
-
-  :global(.hero-logo) {
-    width: clamp(7rem, 14vw, 13.75rem);
-    margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
-    color: var(--color-ink);
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .hero-title,
-    .hero-support,
-    .portrait-frame {
-      animation: hero-enter 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-
-    .hero-title {
-      animation-delay: 780ms;
-    }
-
-    .hero-support {
-      animation-delay: 920ms;
-    }
-
-    .portrait-frame {
-      animation-delay: 1040ms;
-    }
-  }
-
-  @keyframes hero-enter {
-    from {
-      opacity: 0;
-      transform: translateY(1rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .home-hero { position: relative; padding-block: 4rem 3.5rem; overflow: hidden; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; gap: 5rem; }
+  .hero-copy { padding-block: 1rem 2rem; }
+  h1 { margin-top: 1.5rem; font-family: var(--font-serif); font-weight: 500; letter-spacing: .02em; font-size: clamp(3.8rem, 6.6vw, 6rem); line-height: 1.25; }
+  h1 > span { display: block; margin-top: .8rem; font-family: var(--font-sans); font-size: 1.1rem; letter-spacing: .12em; font-weight: 400; }
+  .name-separator { margin-inline: .7rem; opacity: .45; }
+  .hero-intro { margin-top: 2rem; font-size: clamp(1.15rem, 1.8vw, 1.4rem); line-height: 1.85; }
+  .hero-belief { margin-top: 1.2rem; font-size: .9rem; line-height: 1.95; color: var(--color-quiet); }
+  .hero-belief span { display: block; }
+  .hero-actions { display: flex; align-items: center; gap: .5rem; margin-top: 1.8rem; }
+  .hero-signature { display: flex; align-items: end; gap: 1.4rem; margin-top: 2.5rem; }
+  .hero-signature :global(.tomphie-logo.hero-logo) { width: 8.5rem; flex-shrink: 0; color: var(--color-path); }
+  .hero-signature > span { font-family: var(--font-serif); font-size: .8rem; letter-spacing: .12em; color: var(--color-quiet); padding-bottom: .6rem; }
+  .hero-portrait { position: relative; width: min(100%, 25.5rem); margin: 1rem auto 0; }
+  .portrait-frame { position: relative; aspect-ratio: 4 / 4.7; border-radius: 11rem 11rem 1.5rem 1.5rem; padding: .55rem; border: 1px solid rgba(255,255,255,.58); background: rgba(255,255,255,.14); box-shadow: 0 24px 80px rgba(15,47,53,.18), inset 0 0 0 1px rgba(255,255,255,.18); }
+  .portrait-art { position: absolute; inset: .55rem; overflow: hidden; border-radius: 10.7rem 10.7rem 1rem 1rem; }
+  .portrait-art :global(picture) { display: block; position: absolute; inset-inline: 0; bottom: 0; width: 100%; height: 205%; }
+  .portrait-art :global(img) { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 52% bottom; }
+  .portrait-caption { position: absolute; left: 1.1rem; right: 1.1rem; bottom: 1.1rem; display: flex; align-items: center; gap: .7rem; border-radius: 999px; padding: .85rem 1rem; font-size: .7rem; color: #f8fffb; background: rgba(19,43,48,.45); }
+  .portrait-caption > span:last-child { margin-left: auto; }
+  .portrait-caption__dot { width: .4rem; height: .4rem; border-radius: 50%; background: #b6dece; }
+  .portrait-orbit { position: absolute; inset: -1.5rem -1.5rem 2rem; border: 1px solid color-mix(in srgb, var(--color-path) 18%, transparent); border-radius: 50% 50% 45% 45%; transform: rotate(9deg); }
+  .portrait-note { position: absolute; right: -1.9rem; top: 4.5rem; writing-mode: vertical-rl; font-size: .6rem; letter-spacing: .2em; color: var(--color-quiet); }
+  .hero-bottom { margin-top: 2rem; }
+  .scroll-cue { display: flex; align-items: center; gap: .75rem; font-size: .7rem; color: var(--color-quiet); margin-bottom: 2.25rem; }
+  .scroll-cue > span:first-child { border: 1px solid var(--color-line); border-radius: 999px; width: 1.8rem; height: 2.7rem; display: grid; place-items: center; }
+  .scroll-cue__en { margin-left: .6rem; font-size: .55rem; letter-spacing: .18em; }
+  .identity-band { border-radius: 1.25rem; display: grid; grid-template-columns: 8rem 1fr; align-items: start; gap: 1.5rem; padding: 1.5rem 1.75rem; }
+  .identity-band .eyebrow { margin-top: .35rem; letter-spacing: .04em; }
+  .identity-band ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: .85rem 1.5rem; font-size: .72rem; line-height: 1.7; }
+  @media (max-width: 63.99rem) { .hero-grid { gap: 2.5rem; } .hero-signature { display: block; } .hero-signature > span { display: block; margin-top: .6rem; } .identity-band { grid-template-columns: 1fr; gap: 1rem; } .identity-band ul { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 47.99rem) { .home-hero { padding-top: 1.8rem; } .hero-grid { grid-template-columns: 1fr; gap: 2rem; } .hero-copy { padding-bottom: 0; } h1 { font-size: 3.8rem; } .hero-intro { font-size: 1.15rem; } .hero-signature { display: flex; gap: 1rem; } .hero-signature > span { font-size: .7rem; } .hero-portrait { width: min(84%, 22rem); margin-top: 1rem; } .hero-bottom { margin-top: 3rem; } .scroll-cue { margin-bottom: 1.5rem; } .identity-band { padding: 1.2rem; } .identity-band ul { gap: .8rem 1rem; font-size: .68rem; } }
+  @media (max-width: 24rem) { .hero-actions { gap: 0; } .pill-link { padding-inline: 1rem; font-size: .75rem; } .hero-signature > span { letter-spacing: 0; } .identity-band ul { grid-template-columns: 1fr; } }
+  @media (max-width: 47.99rem) {
+    .home-hero { padding-top: 1rem; }
+    .hero-grid { gap: 1.75rem; }
+    h1 { margin-top: 1.2rem; font-size: 3.4rem; }
+    h1 > span { font-size: .95rem; }
+    .hero-intro { margin-top: 1.2rem; font-size: 1.05rem; }
+    .hero-belief { margin-top: .8rem; font-size: .85rem; }
+    .hero-actions { margin-top: 1.2rem; }
+    .hero-signature { margin-top: 1.75rem; }
   }
 </style>

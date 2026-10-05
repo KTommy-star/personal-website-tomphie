@@ -2,16 +2,17 @@
   --journey-edge: clamp(1.25rem, 4vw, 2.5rem);
   position: relative;
   overflow: clip;
-  background: var(--color-paper);
+  background: transparent;
 }
 
 .journey-hero {
   position: relative;
   display: grid;
-  min-height: calc(100svh - 4rem);
+  min-height: min(48rem, calc(100svh - 6rem));
   align-content: center;
   overflow: hidden;
-  padding: clamp(6rem, 13vw, 10rem) var(--journey-edge) 5rem;
+  padding: clamp(4rem, 8vw, 7rem) var(--journey-edge) 5rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-paper) 12%, transparent), color-mix(in srgb, var(--color-paper) 92%, transparent));
   border-bottom: 1px solid var(--color-line);
   isolation: isolate;
 }
@@ -34,12 +35,13 @@
 }
 
 .journey-hero h1 {
-  max-width: 13ch;
+  max-width: 18ch;
   margin: 0;
-  font-size: clamp(3.35rem, 8vw, 8.75rem);
-  font-weight: 650;
-  letter-spacing: -0.065em;
-  line-height: 0.94;
+  font-family: var(--font-serif);
+  font-size: clamp(2.6rem, 5.5vw, 5.4rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.4;
 }
 
 .journey-hero h1 span {
@@ -93,19 +95,24 @@
   border-radius: 50%;
 }
 
-.journey-filters {
+.journey-filters.glass {
   position: sticky;
-  inset-block-start: 4rem;
+  inset-block-start: 5.5rem;
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 4.5rem;
+  min-height: 3.8rem;
   padding: 0 var(--journey-edge);
-  border-bottom: 1px solid var(--color-line);
-  background: color-mix(in srgb, var(--color-paper) 93%, transparent);
-  backdrop-filter: blur(12px);
+  width: min(calc(100% - 3rem), 75rem);
+  margin-inline: auto;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 25px rgba(19,51,55,.08);
+  background: var(--color-surface-glass-strong);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .journey-filters > p {
@@ -117,7 +124,7 @@
 
 .journey-filters > div {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.5rem;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: none;
@@ -152,6 +159,7 @@
   display: grid;
   width: min(100%, 90rem);
   margin-inline: auto;
+  background: color-mix(in srgb, var(--color-paper) 94%, transparent);
 }
 
 .journey-map {
@@ -164,8 +172,9 @@
   position: relative;
   min-height: 32rem;
   overflow: hidden;
-  background: var(--color-ink);
-  color: var(--color-paper);
+  border-radius: 1.5rem;
+  color: var(--color-ink);
+  background: var(--color-surface-glass);
 }
 
 .journey-map__frame::before {
@@ -186,7 +195,7 @@
   gap: 1rem;
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--color-paper) 65%, transparent);
+  color: var(--color-quiet);
 }
 
 .journey-map__meta {
@@ -207,7 +216,7 @@
 
 .journey-map__grid-line {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-paper) 10%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 10%, transparent);
   stroke-width: 1;
 }
 
@@ -221,12 +230,12 @@
 }
 
 .journey-map__route-base {
-  stroke: color-mix(in srgb, var(--color-paper) 18%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 18%, transparent);
   stroke-width: 2;
 }
 
 .journey-map__route-progress {
-  stroke: color-mix(in srgb, var(--color-path) 58%, white);
+  stroke: var(--color-path);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-dasharray: 1;
@@ -234,13 +243,13 @@
 }
 
 .journey-map__route-future {
-  stroke: color-mix(in srgb, var(--color-paper) 48%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 48%, transparent);
   stroke-width: 2;
   stroke-dasharray: 7 9;
 }
 
 .journey-map__point {
-  color: var(--color-paper);
+  color: var(--color-ink);
   opacity: 0.28;
   transition: opacity 180ms ease-out;
 }
@@ -257,7 +266,7 @@
 }
 
 .journey-map__node {
-  fill: var(--color-ink);
+  fill: var(--color-paper);
   stroke: currentColor;
   stroke-width: 3;
   vector-effect: non-scaling-stroke;
@@ -274,7 +283,7 @@
 
 .journey-map__orbit,
 .journey-map__branches {
-  stroke: color-mix(in srgb, var(--color-paper) 55%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink) 40%, transparent);
   stroke-width: 1;
 }
 
@@ -388,10 +397,11 @@
 .journey-chapter__body > h2 {
   max-width: 12ch;
   margin: 0;
-  font-size: clamp(2rem, 5vw, 4.5rem);
-  font-weight: 620;
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  font-weight: 500;
   letter-spacing: -0.045em;
-  line-height: 1.04;
+  line-height: 1.4;
 }
 
 .journey-chapter__copy {
@@ -636,11 +646,11 @@
 
 @media (max-width: 47.99rem) {
   .journey-hero {
-    min-height: 46rem;
+    min-height: 36rem;
   }
 
   .journey-hero h1 {
-    font-size: clamp(3.2rem, 15vw, 5.4rem);
+    font-size: clamp(2.5rem, 10vw, 3.8rem);
   }
 
   .journey-hero h1 span:last-child {

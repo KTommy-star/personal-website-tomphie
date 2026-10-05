@@ -86,19 +86,4 @@ const notes = defineCollection({
   }),
 });
 
-const treasure = defineCollection({
-  loader: glob({
-    base: "./src/content/treasure",
-    pattern: "**/[^_]*.{md,mdx}",
-  }),
-  schema: z.object({
-    ...sharedFields,
-    visibility: visibility.default("private"),
-    kind: z.enum(["moment", "place", "object", "story", "letter"]),
-    occurredAt: z.coerce.date(),
-    place: z.string().min(1).optional(),
-    consentConfirmed: z.boolean().default(false),
-  }),
-});
-
-export const collections = { journey, research, projects, notes, treasure };
+export const collections = { journey, research, projects, notes };

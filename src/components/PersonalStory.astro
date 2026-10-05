@@ -1,14 +1,16 @@
 ---
 import { profile } from "../data/profile";
 import BrandWord from "./BrandWord.astro";
+import { withBase } from "../lib/paths";
 ---
 
-<section class="brand-scene relative overflow-hidden border-y border-line py-20 sm:py-24 lg:py-28" aria-labelledby="story-title">
+<section class="brand-scene story-section reading-surface section-space relative overflow-clip" aria-labelledby="story-title">
   <BrandWord placement="story" />
 
-  <div class="relative z-10 mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(16rem,0.65fr)_minmax(0,1.35fr)] lg:gap-16 lg:px-10">
-    <aside class="lg:sticky lg:top-28 lg:self-start" aria-label="人生坐标">
-      <p class="text-sm font-semibold">我的坐标</p>
+  <div class="shell story-grid relative z-10">
+    <aside class="story-atlas glass" aria-label="人生坐标" data-glass-light>
+      <p class="eyebrow">01 / 来路</p>
+      <p class="atlas-title">我的坐标</p>
       <ol class="story-path relative mt-7 grid gap-7 pl-8" role="list" data-story-progress>
         {profile.locations.map((location) => (
           <li class="relative" data-story-node>
@@ -18,16 +20,19 @@ import BrandWord from "./BrandWord.astro";
           </li>
         ))}
       </ol>
+      <svg class="atlas-contours" viewBox="0 0 260 135" fill="none" stroke="currentColor" stroke-width=".8" aria-hidden="true"><path d="M-20 102Q38 44 73 75T151 64T278 50M-20 88Q38 30 73 61T151 50T278 36M-20 74Q38 16 73 47T151 36T278 22M-20 60Q38 2 73 33T151 22T278 8M-20 116Q38 58 73 89T151 78T278 64M-20 130Q38 72 73 103T151 92T278 78"/></svg>
+      <a class="atlas-link" data-press href={withBase("/journey", import.meta.env.BASE_URL)}>展开人生轨迹 <span aria-hidden="true">↗</span></a>
     </aside>
 
     <article class="max-w-3xl">
-      <h2 id="story-title" class="text-balance text-4xl font-semibold leading-[1.14] sm:text-5xl lg:text-6xl">
+      <h2 id="story-title" class="editorial-title">
         <span class="block">从山城出发</span>
         <span class="block">在更大的世界里寻找坐标</span>
       </h2>
-      <div class="story-copy mt-10 grid gap-7 text-pretty text-lg leading-9 text-quiet sm:text-xl sm:leading-10">
-        {profile.story.map((paragraph) => (
+      <div class="story-copy">
+        {profile.story.map((paragraph, index) => (
           <p>
+            <span class="story-paragraph-label">0{index + 1} <span>{["关于来路", "关于此刻", "关于远方"][index]}</span></span>
             {paragraph.map((line) => <span class="block">{line}</span>)}
           </p>
         ))}
@@ -37,6 +42,17 @@ import BrandWord from "./BrandWord.astro";
 </section>
 
 <style>
+  .story-section { border-radius: 2.5rem 2.5rem 0 0; }
+  .story-grid { display: grid; grid-template-columns: minmax(15rem,.7fr) minmax(0,1.3fr); gap: 6rem; align-items: start; }
+  .story-atlas { position: sticky; top: 7rem; padding: 2rem; border-radius: 1.5rem; overflow: hidden; }
+  .atlas-title { font-family: var(--font-serif); font-size: 1.65rem; margin-top: 1.6rem; }
+  .atlas-contours { width: calc(100% + 4rem); height: 7rem; margin: 1rem -2rem .5rem; color: var(--color-path); opacity: .24; }
+  .atlas-link { display: flex; justify-content: space-between; align-items: center; min-height: 2.75rem; border-top: 1px solid var(--color-line); padding-top: 1rem; font-size: .8rem; color: var(--color-path); text-decoration: none; }
+  .story-copy { display: grid; gap: 2.2rem; margin-top: 2.3rem; font-size: .98rem; line-height: 2.15; color: var(--color-quiet); }
+  .story-paragraph-label { display: block; margin-bottom: .7rem; color: var(--color-path); font-size: .6rem; letter-spacing: .1em; }
+  .story-paragraph-label span { margin-left: .8rem; }
+  @media (max-width: 63.99rem) { .story-grid { gap: 3rem; grid-template-columns: minmax(13rem,.8fr) minmax(0,1.2fr); } .story-atlas { padding: 1.5rem; } }
+  @media (max-width: 47.99rem) { .story-grid { grid-template-columns: 1fr; gap: 2.5rem; } .story-atlas { position: static; padding: 1.5rem; } .atlas-contours { position: absolute; bottom: 3rem; right: -5rem; width: 70%; margin: 0; opacity: .1; } .story-copy { font-size: .92rem; } }
   .story-path::before,
   .story-path::after {
     content: "";
@@ -90,26 +106,6 @@ import BrandWord from "./BrandWord.astro";
     }
   }
 
-  @supports (animation-timeline: view()) {
-    .story-copy {
-      animation: story-enter linear both;
-      animation-range: entry 0% entry 32%;
-      animation-timeline: view();
-    }
-  }
-
-  @keyframes story-enter {
-    from {
-      opacity: 0.45;
-      transform: translateY(1.25rem);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .story-path::after {
       transition: none;
@@ -127,19 +123,18 @@ import BrandWord from "./BrandWord.astro";
 
   document.querySelectorAll<HTMLOListElement>("[data-story-progress]").forEach((path) => {
     const nodes = Array.from(path.querySelectorAll<HTMLElement>("[data-story-node]"));
+    const section = path.closest<HTMLElement>(".story-section");
+    if (!section) return;
     let frame = 0;
 
     const updateProgress = () => {
       frame = 0;
-      const rect = path.getBoundingClientRect();
+      const rect = section.getBoundingClientRect();
       const value = calculateRouteProgress(rect.top, rect.bottom, window.innerHeight);
       path.style.setProperty("--story-progress", String(value));
 
-      const activationLine = window.innerHeight * 0.52;
-      nodes.forEach((node) => {
-        const nodeRect = node.getBoundingClientRect();
-        const active = nodeRect.top + nodeRect.height / 2 <= activationLine;
-        node.dataset.storyActive = String(active);
+      nodes.forEach((node, index) => {
+        node.dataset.storyActive = String(value >= index / Math.max(1, nodes.length - 1));
       });
     };
 

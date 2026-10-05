@@ -1,77 +1,92 @@
 ---
 import { profile } from "../data/profile";
+import { withBase } from "../lib/paths";
 import BrandWord from "./BrandWord.astro";
+const descriptions = [
+  "让不同来源的信息相互补充，尝试从更多视角理解同一个问题",
+  "当一部分信息不在场，依然寻找可靠的理解与判断",
+  "在医学场景里探索深度学习，重视真实问题与模型的可靠性",
+  "关注从理解到行动的过程，探索能完成真实任务的智能体",
+  "探索智能与物理世界的连接，让感知、决策和行动相互呼应",
+];
+const labels = ["MULTIMODAL LEARNING", "MISSING MODALITIES", "MEDICAL DEEP LEARNING", "AGENT", "EMBODIED INTELLIGENCE"];
 ---
 
-<section class="brand-scene focus-section relative overflow-hidden bg-ink py-20 text-paper sm:py-24 lg:py-28" aria-labelledby="focus-title">
+<section class="brand-scene focus-section section-space relative overflow-hidden" aria-labelledby="focus-title">
   <BrandWord placement="focus" />
-
-  <div class="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-    <div class="grid gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,1.1fr)] lg:gap-16">
-      <div class="lg:sticky lg:top-28 lg:self-start">
-        <h2 id="focus-title" class="text-balance text-4xl font-semibold leading-[1.12] sm:text-5xl lg:text-6xl">
-          <span class="block">在广度里探索</span>
-          <span class="block">也在深度里求索</span>
-        </h2>
-        <p class="mt-7 max-w-lg text-pretty text-lg leading-8 text-paper/70">
-          <span class="block">对新的方向保持好奇</span>
-          <span class="block">对真正的问题保持耐心</span>
-        </p>
-
-        <ul class="role-list mt-10 border-t border-paper/20 text-sm text-paper/72" role="list">
-          {profile.roles.map((role) => <li class="border-b border-paper/20 py-3">{role}</li>)}
-        </ul>
+  <div class="shell focus-grid relative z-10">
+    <div class="focus-copy">
+      <p class="eyebrow">02 / 探索的方向</p>
+      <h2 id="focus-title" class="editorial-title"><span>在广度里探索</span><span>也在深度里求索</span></h2>
+      <p class="focus-intro"><span>对新的方向保持好奇</span><span>对真正的问题保持耐心</span></p>
+      <div class="focus-choices" role="group" aria-label="选择研究兴趣">
+        {profile.focuses.map((item, index) => <button type="button" class="focus-choice" data-focus-choice={index} data-focus-description={descriptions[index]} data-focus-label={labels[index]} aria-pressed={index === 0 ? "true" : "false"} aria-controls="focus-detail" data-press><span class="focus-choice__number">0{index + 1}</span>{item}<span class="focus-choice__arrow" aria-hidden="true">↗</span></button>)}
       </div>
+      <a class="focus-more" href={withBase("/research", import.meta.env.BASE_URL)} data-press>走进我的学术主页 <span aria-hidden="true">→</span></a>
+    </div>
 
-      <div>
-        <p class="mb-4 text-sm text-paper/60">正在关注的研究方向</p>
-        <ul class="border-t border-paper/20" role="list">
-          {profile.focuses.map((item) => (
-            <li class="focus-item border-b border-paper/20 py-6 text-2xl font-semibold sm:py-7 sm:text-4xl">
-              {item}
-            </li>
-          ))}
-        </ul>
+    <div class="focus-lens glass" data-glass-light>
+      <div class="focus-lens__caption"><span>正在关注的研究方向</span><span>INTEREST / 05</span></div>
+      <div class="focus-field" data-focus-field="0" aria-hidden="true">
+        <svg viewBox="0 0 460 340" fill="none"><g stroke="currentColor" stroke-width=".7"><ellipse cx="230" cy="170" rx="153" ry="110" transform="rotate(-25 230 170)"/><ellipse cx="230" cy="170" rx="153" ry="110" transform="rotate(35 230 170)"/><ellipse cx="230" cy="170" rx="125" ry="125"/><path d="M90 118 230 170 318 81M144 277 230 170 379 207M230 170 225 40" stroke-dasharray="3 6"/></g><g class="field-nodes" fill="currentColor"><circle cx="90" cy="118" r="6"/><circle cx="318" cy="81" r="6"/><circle cx="379" cy="207" r="6"/><circle cx="144" cy="277" r="6"/><circle cx="225" cy="40" r="6"/></g><circle cx="230" cy="170" r="47" fill="currentColor" opacity=".06"/><circle cx="230" cy="170" r="46" stroke="currentColor" stroke-width=".7"/><path d="M211 173c4-18 12-18 18 0s14 18 20 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="230" cy="170" r="73" stroke="currentColor" opacity=".12"/></svg>
+        <span class="field-caption field-caption--a">理解</span><span class="field-caption field-caption--b">连接</span><span class="field-caption field-caption--c">探索</span>
       </div>
+      <div id="focus-detail" class="focus-detail" aria-live="polite" aria-atomic="true">
+        <p data-focus-label-display>{labels[0]}</p>
+        <h3 data-focus-title>{profile.focuses[0]}</h3>
+        <p data-focus-copy>{descriptions[0]}</p>
+      </div>
+      <p class="focus-disclaimer">这些是我的研究兴趣与探索方向，不代表已发表成果</p>
     </div>
   </div>
 </section>
 
 <style>
-  .focus-item {
-    transition:
-      color 180ms ease-out,
-      transform 180ms ease-out;
-  }
-
-  @media (hover: hover) {
-    .focus-item:hover {
-      color: var(--color-path);
-      transform: translateX(0.5rem);
-    }
-  }
-
-  @supports (animation-timeline: view()) {
-    .focus-item {
-      animation: focus-enter linear both;
-      animation-range: entry 0% entry 35%;
-      animation-timeline: view();
-    }
-  }
-
-  @keyframes focus-enter {
-    from {
-      opacity: 0.35;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .focus-item {
-      animation: none;
-    }
-  }
+  .focus-section { background: linear-gradient(180deg, color-mix(in srgb, var(--color-paper) 84%, transparent), color-mix(in srgb, var(--color-paper) 38%, transparent), color-mix(in srgb, var(--color-paper) 84%, transparent)); }
+  .focus-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 6rem; }
+  .editorial-title { margin-top: 1.8rem; }
+  .editorial-title span, .focus-intro span { display: block; }
+  .focus-intro { margin-top: 1.2rem; font-size: .95rem; line-height: 1.95; color: var(--color-quiet); }
+  .focus-choices { display: grid; margin-top: 2rem; gap: .25rem; }
+  .focus-choice { display: flex; gap: 1rem; align-items: center; min-height: 3.2rem; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--color-line) 70%, transparent); border-radius: .6rem; padding: .7rem .9rem; background: transparent; color: var(--color-quiet); cursor: pointer; font-size: .98rem; text-align: left; transition: background 200ms ease, color 200ms ease; }
+  .focus-choice[aria-pressed="true"] { background: color-mix(in srgb, var(--color-path) 9%, transparent); color: var(--color-ink); }
+  .focus-choice__number { font-family: Georgia, serif; font-size: .68rem; color: var(--color-quiet); }
+  .focus-choice__arrow { margin-left: auto; opacity: 0; transition: opacity 200ms ease, translate 200ms ease; translate: -5px 5px; }
+  .focus-choice[aria-pressed="true"] .focus-choice__arrow, .focus-choice:hover .focus-choice__arrow { opacity: 1; translate: 0; }
+  .focus-more { display: inline-flex; align-items: center; gap: 2rem; min-height: 2.75rem; margin-top: 1.5rem; color: var(--color-path); font-size: .8rem; text-decoration: none; }
+  .focus-lens { padding: 1.7rem; border-radius: 2rem; }
+  .focus-lens__caption { display: flex; justify-content: space-between; gap: 1rem; font-size: .65rem; color: var(--color-quiet); }
+  .focus-lens__caption span:last-child { font-size: .55rem; letter-spacing: .1em; }
+  .focus-field { position: relative; margin: 1.5rem -1rem 0; color: var(--color-path); }
+  .focus-field svg { width: 100%; height: auto; }
+  .field-nodes circle { opacity: .25; transition: opacity 300ms ease, r 300ms ease; }
+  .focus-field[data-focus-field="0"] .field-nodes > circle:nth-child(1), .focus-field[data-focus-field="1"] .field-nodes > circle:nth-child(2), .focus-field[data-focus-field="2"] .field-nodes > circle:nth-child(3), .focus-field[data-focus-field="3"] .field-nodes > circle:nth-child(4), .focus-field[data-focus-field="4"] .field-nodes > circle:nth-child(5) { opacity: 1; r: 8; }
+  .field-caption { position: absolute; font-size: .6rem; letter-spacing: .1em; color: var(--color-quiet); }
+  .field-caption--a { top: 28%; left: 12%; } .field-caption--b { top: 12%; right: 22%; } .field-caption--c { bottom: 10%; left: 24%; }
+  .focus-detail { min-height: 9rem; padding: 1rem .4rem; border-top: 1px solid var(--color-line); }
+  .focus-detail > p:first-child { font-size: .55rem; letter-spacing: .16em; color: var(--color-quiet); }
+  .focus-detail h3 { margin-top: .8rem; font-family: var(--font-serif); font-size: 1.65rem; font-weight: 500; }
+  .focus-detail > p:last-child { margin-top: .65rem; font-size: .85rem; line-height: 1.9; color: var(--color-quiet); }
+  .focus-disclaimer { font-size: .6rem; margin-top: .7rem; color: var(--color-quiet); }
+  @media (max-width: 63.99rem) { .focus-grid { gap: 3rem; } .focus-lens { padding: 1.3rem; } }
+  @media (max-width: 47.99rem) { .focus-grid { grid-template-columns: 1fr; gap: 2rem; } .focus-lens { border-radius: 1.4rem; } .focus-field { margin-top: 1rem; } }
 </style>
+
+<script>
+  import { animate } from "motion";
+  const detail = document.querySelector<HTMLElement>("#focus-detail");
+  const title = document.querySelector<HTMLElement>("[data-focus-title]");
+  const copy = document.querySelector<HTMLElement>("[data-focus-copy]");
+  const label = document.querySelector<HTMLElement>("[data-focus-label-display]");
+  const field = document.querySelector<HTMLElement>("[data-focus-field]");
+  const choices = document.querySelectorAll<HTMLButtonElement>("[data-focus-choice]");
+  choices.forEach(button => button.addEventListener("click", () => {
+    if (!detail || !title || !copy || !label || !field) return;
+    choices.forEach(choice => choice.ariaPressed = String(choice === button));
+    title.textContent = button.childNodes[1]?.textContent ?? "";
+    copy.textContent = button.dataset.focusDescription ?? "";
+    label.textContent = button.dataset.focusLabel ?? "";
+    field.dataset.focusField = button.dataset.focusChoice;
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) animate(detail, { opacity: [.65, 1], y: [5, 0] }, { duration: .25, ease: "easeOut" });
+  }));
+</script>

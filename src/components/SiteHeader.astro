@@ -21,8 +21,8 @@ const isCurrent = (href: string) => {
 };
 ---
 
-<header class="site-header sticky top-0 z-40 border-b border-line bg-paper/95">
-  <div class="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 lg:px-10">
+<header class="site-header">
+  <div class="header-pane glass shell" data-glass-light>
     <a
       class="brand-link group inline-flex min-h-11 items-center gap-2.5 text-base font-semibold no-underline"
       href={withBase("/", base)}
@@ -56,10 +56,11 @@ const isCurrent = (href: string) => {
 
       <details class="mobile-menu relative md:hidden">
         <summary class="flex min-h-11 cursor-pointer list-none items-center px-2 text-sm font-medium">
-          菜单
+          <span class="sr-only">菜单</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h16M4 16h16" /></svg>
         </summary>
         <nav
-          class="absolute right-0 top-full z-40 mt-2 w-52 border border-line bg-paper p-2 shadow-lg"
+          class="mobile-menu-pane absolute right-0 top-full z-40 mt-3 w-52 p-2 shadow-lg"
           aria-label="移动端主导航"
         >
           <ul class="grid gap-1" role="list">
@@ -85,6 +86,12 @@ const isCurrent = (href: string) => {
 </header>
 
 <style>
+  .site-header { position: fixed; top: 1rem; left: 0; right: 0; z-index: 40; pointer-events: none; }
+  .header-pane { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.6rem; padding: .25rem 1.25rem; border-radius: 999px; pointer-events: auto; background: var(--color-surface-glass-strong); -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); }
+  .brand-link { font-size: .9rem; letter-spacing: -.025em; }
+  .nav-link[aria-current="page"] { background: color-mix(in srgb, var(--color-ink) 7%, transparent); border-radius: 999px; }
+  .mobile-menu-pane { border: 1px solid var(--color-line); border-radius: 1.2rem; background: var(--color-surface); }
+  summary::-webkit-details-marker { display: none; }
   :global(.tomphie-logo.brand-logo) {
     width: 1.5rem;
     color: var(--color-path);
@@ -105,9 +112,9 @@ const isCurrent = (href: string) => {
   .nav-link::after {
     content: "";
     position: absolute;
-    inset-block-end: 0.35rem;
+    inset-block-end: 0.6rem;
     inset-inline: 0.75rem;
-    height: 0.125rem;
+    height: 1px;
     background: var(--color-path);
     transform: scaleX(0);
     transform-origin: left;
@@ -138,4 +145,18 @@ const isCurrent = (href: string) => {
       transform: translateY(0) scale(1);
     }
   }
+
+  @media (max-width: 47.99rem) { .site-header { top: .7rem; } .header-pane { padding-inline: .85rem; } }
 </style>
+
+<script>
+  document.querySelectorAll<HTMLDetailsElement>(".mobile-menu").forEach((menu) => {
+    const summary = menu.querySelector("summary");
+    menu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { menu.open = false; summary?.focus(); }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+    });
+  });
+</script>
