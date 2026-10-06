@@ -41,13 +41,16 @@ test('liquid glass refracts clear scenery across the functional panels', async (
     for (const selector of ['.header-pane', '.story-atlas', '.focus-lens', '.route-card', '.contact-sheet', '.portrait-caption']) {
       const panel = page.locator(selector).first();
       await panel.scrollIntoViewIfNeeded();
-      await page.waitForFunction(s => document.querySelector(s)?.querySelector('.liquid-glass-refraction')?.style.filter.includes('url('), selector);
+      await page.waitForFunction(s => {
+        const e = document.querySelector(s); const copy = e?.querySelector('.liquid-glass-refraction');
+        return (copy?.style.filter || e?.style.backdropFilter)?.includes('url(');
+      }, selector);
       const material = await panel.evaluate(e => {
         const style = getComputedStyle(e);
         const source = e.querySelector('.liquid-glass-refraction');
         const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
         const ctx = canvas.getContext('2d'); ctx.fillStyle = style.backgroundColor; ctx.fillRect(0,0,1,1);
-        const id = source.style.filter.match(/#([^"')]+)/)?.[1];
+        const id = (source?.style.filter || e.style.backdropFilter).match(/#([^"')]+)/)?.[1];
         const filter = document.getElementById(id);
         return { mode: e.dataset.glass, opacity: ctx.getImageData(0,0,1,1).data[3]/255, blur: parseFloat(style.backdropFilter.match(/blur\(([^)]+)/)?.[1] ?? '0'), bend: [...filter.querySelectorAll('feDisplacementMap')].some(n => Number(n.getAttribute('scale')) > 0), decodedMap: filter.querySelector('feImage')?.getAttribute('href')?.startsWith('data:image/png') };
       });
@@ -63,17 +66,18 @@ test('liquid glass actually bends pixels at the rim while its center stays clear
   await page.goto(url);
   const panel = page.locator('.route-card').first();
   await panel.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => document.querySelector('.route-card .liquid-glass-refraction')?.style.filter.includes('url('));
+  await page.waitForFunction(() => document.querySelector('.route-card')?.style.backdropFilter.includes('url('));
   await panel.evaluate(e => {
     for (const child of e.children) if (!child.classList.contains('liquid-glass-optics')) child.style.visibility = 'hidden';
-    const scene = e.querySelector('.liquid-glass-scenery');
-    scene.replaceChildren();
-    scene.style.background = 'repeating-linear-gradient(90deg, #073b4c 0 3px, #eef6d9 3px 7px)';
+    // Place the fixture behind the panel: the real backdrop, not an internal photo copy.
+    const backdrop = document.createElement('div');
+    backdrop.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,#073b4c 0 3px,#eef6d9 3px 7px)';
+    e.parentElement.prepend(backdrop);
   });
   await page.waitForTimeout(350);
   const refracted = (await panel.screenshot()).toString('base64');
   await panel.evaluate(e => {
-    const id = e.querySelector('.liquid-glass-refraction').style.filter.match(/#([^"')]+)/)[1];
+    const id = e.style.backdropFilter.match(/#([^"')]+)/)[1];
     for (const node of document.getElementById(id).querySelectorAll('feDisplacementMap')) node.setAttribute('scale', '0');
   });
   const flat = (await panel.screenshot()).toString('base64');
@@ -88,6 +92,25 @@ test('liquid glass actually bends pixels at the rim while its center stays clear
     return {rim:rim/nr,center:center/nc};
   }, [refracted,flat]);
   assert(difference.rim > 3 && difference.rim > difference.center*2, `visible bending, not just a filter declaration: ${JSON.stringify(difference)}`);
+  await page.close();
+});
+
+test('scrolling glass cards does not rewrite detached full-screen scenery every frame', async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });
+  await page.goto(url);
+  await page.locator('.route-card').first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(350);
+  await page.evaluate(() => {
+    window.sceneryWrites = 0;
+    window.sceneryObserver = new MutationObserver(records => {
+      window.sceneryWrites += records.filter(record => record.target.classList?.contains('liquid-glass-scenery')).length;
+    });
+    window.sceneryObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+  });
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.synthesizeScrollGesture', { x: 1100, y: 650, yDistance: -650, speed: 800, gestureSourceType: 'mouse' });
+  const writes = await page.evaluate(() => { window.sceneryObserver.disconnect(); return window.sceneryWrites; });
+  assert.equal(writes, 0, 'background must follow native scrolling, not lag through per-frame scenery rewrites');
   await page.close();
 });
 

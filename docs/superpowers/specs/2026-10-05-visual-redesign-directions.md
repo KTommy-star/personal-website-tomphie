@@ -18,7 +18,7 @@
 | Astro + 现有 Tailwind / TypeScript | 保留 | 内容、静态发布和现有路由可复用，不为改视觉迁移框架 |
 | Motion 原生 JavaScript 版 | 已接入 14.0.0，唯一新增动效主库 | 同一体系处理即时按下反馈、物理弹性、SVG 与滚动关联；不依赖 React |
 | GSAP / ScrollTrigger | 本轮不接入 | 强大的滚动编排备选；本项目更重视轻量、可打断的触控反馈，不维护两套动画生命周期 |
-| gentpan/liquidglass 零依赖 SVG 引擎 | 2026-10-06 已固定 v1.0.0 来源并接入全站功能玻璃 | 独立背景副本的真实折射，不依赖 Chromium 专属的 SVG backdrop；静态自托管，不使用截图或其组件/动效体系 |
+| gentpan/liquidglass 零依赖 SVG 引擎 | 2026-10-06 已固定 v1.0.0 来源并接入全站功能玻璃 | Chromium 滚动面板使用原生 backdrop 折射，其他浏览器保留单遍背景兼容层；固定导航不逐帧同步，不使用截图或其组件/动效体系 |
 | 原生 CSS / SVG 玻璃材质 | 共享材质、边光与降级层 | 文字清晰、按压高光、减少透明度/高对比下仍可读可用；不是苹果原生 SDK |
 | Lucide SVG | 图标来源 | 只按需取用导航、主题、复制、展开等图标；不替换个人 Logo，不引入整套图标运行时 |
 | React Bits / Aceternity UI | 仅作为视觉技法参考 | 不直接复制成品区块，不引入 React 来拼装 Astro 页面 |

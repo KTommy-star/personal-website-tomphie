@@ -1,22 +1,22 @@
-import { createGlass } from "../vendor/liquid-glass.js";
+import { createGlass, engine } from "../vendor/liquid-glass.js";
 
-// Refract aligned scenery, never the panel's text or interactive controls.
-// A normal SVG filter also works on WebKit/Gecko, unlike backdrop-filter: url().
+// Use native backdrop refraction where supported, so compositor scrolling owns
+// the background alignment. WebKit/Gecko keep the aligned-scene compatibility path.
 const landscape = document.querySelector<HTMLElement>("body > .landscape");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const contrast = matchMedia("(prefers-contrast: more)");
 const transparency = matchMedia("(prefers-reduced-transparency: reduce)");
-const coarse = matchMedia("(pointer: coarse)");
 const disabled = () => contrast.matches || transparency.matches;
 
 if (landscape) {
   type Lens = ReturnType<typeof createGlass>;
   type Surface = {
     element: HTMLElement;
-    optics: HTMLElement;
     source: HTMLElement;
     portrait: HTMLImageElement | null;
-    scene: HTMLElement;
+    scene?: HTMLElement;
+    native: boolean;
+    scrolls: boolean;
     lens?: Lens;
     visible: boolean;
     bend: number;
@@ -24,32 +24,46 @@ if (landscape) {
   const surfaces: Surface[] = [];
   let frame = 0;
   let followUntil = 0;
+  let geometryChanged = true;
+  let pressed: Surface | undefined;
 
   const update = () => {
     frame = 0;
     if (disabled()) return;
-    for (const surface of surfaces) {
-      if (!surface.visible) continue;
-      const { element, source, scene, portrait } = surface;
-      const rect = element.getBoundingClientRect();
-      const width = element.clientWidth;
-      const height = element.clientHeight;
-      if (!width || !height) continue;
-      const scaleX = rect.width / element.offsetWidth;
-      const scaleY = rect.height / element.offsetHeight;
-      const left = rect.left + element.clientLeft * scaleX;
-      const top = rect.top + element.clientTop * scaleY;
-      const imageRect = portrait?.getBoundingClientRect();
-      scene.style.width = `${(imageRect?.width ?? innerWidth) / scaleX}px`;
-      scene.style.height = `${(imageRect?.height ?? innerHeight) / scaleY}px`;
-      scene.style.transform = `translate(${((imageRect?.left ?? 0) - left) / scaleX}px, ${((imageRect?.top ?? 0) - top) / scaleY}px)`;
-
+    // Read every active box before writing styles; don't force layout per card.
+    const following = performance.now() < followUntil;
+    const measurements = surfaces.filter(surface => surface.visible &&
+      (surface.scrolls || (!surface.native && following) || geometryChanged || !surface.lens)).map(surface => {
+      const { element, portrait } = surface;
+      const width = surface.native ? element.offsetWidth : element.clientWidth;
+      const height = surface.native ? element.offsetHeight : element.clientHeight;
       const radius = Math.min(parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0, width / 2, height / 2);
+      const rect = surface.scene ? element.getBoundingClientRect() : null;
+      const imageRect = portrait?.getBoundingClientRect();
+      const scaleX = rect ? rect.width / element.offsetWidth : 1;
+      const scaleY = rect ? rect.height / element.offsetHeight : 1;
+      return { surface, width, height, radius,
+        sceneWidth: `${(imageRect?.width ?? innerWidth) / scaleX}px`,
+        sceneHeight: `${(imageRect?.height ?? innerHeight) / scaleY}px`,
+        sceneTransform: rect ? `translate(${((imageRect?.left ?? 0) - rect.left) / scaleX - element.clientLeft}px, ${((imageRect?.top ?? 0) - rect.top) / scaleY - element.clientTop}px)` : "",
+      };
+    });
+    geometryChanged = false;
+    for (const { surface, width, height, radius, sceneWidth, sceneHeight, sceneTransform } of measurements) {
+      if (!width || !height) continue;
+      const { element, source, scene } = surface;
+      if (scene) {
+        if (scene.style.width !== sceneWidth) scene.style.width = sceneWidth;
+        if (scene.style.height !== sceneHeight) scene.style.height = sceneHeight;
+        if (scene.style.transform !== sceneTransform) scene.style.transform = sceneTransform;
+      }
       const bezel = Math.min(28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
       if (!surface.lens) {
         surface.lens = createGlass(source, {
+          mode: surface.native ? "backdrop" : "content",
           fit: true, radius, bezel, curvature: 2.5, ior: 1.45,
-          refraction: surface.bend, chroma: coarse.matches ? 0 : .065,
+          // One optical pass per panel, not three full-size colour-channel passes.
+          refraction: surface.bend, chroma: 0,
           blur: 0, specular: .42, specularWidth: 1.4,
           mapScale: Math.min(1, 768 / Math.max(width, height)),
         });
@@ -64,7 +78,8 @@ if (landscape) {
     if (!frame) frame = requestAnimationFrame(update);
   };
   // Follow only short presses/hover transitions, not an idle render loop.
-  const followInteraction = () => {
+  const followInteraction = (surface: Surface) => {
+    if (surface.native) return;
     if (!reduced.matches) followUntil = performance.now() + 380;
     requestUpdate();
   };
@@ -76,35 +91,44 @@ if (landscape) {
     }
     requestUpdate();
   }, { rootMargin: "120px" });
-  const sizes = new ResizeObserver(requestUpdate);
+  const requestGeometry = () => { geometryChanged = true; requestUpdate(); };
+  const sizes = new ResizeObserver(requestGeometry);
 
   document.querySelectorAll<HTMLElement>(".glass").forEach(element => {
-    const optics = document.createElement("div");
-    optics.className = "liquid-glass-optics";
-    optics.setAttribute("aria-hidden", "true");
-    const source = document.createElement("div");
-    source.className = "liquid-glass-refraction";
-    const portrait = element.classList.contains("portrait-caption")
+    // The fixed header keeps a static scenery plane, so passing headlines don't
+    // become a second layer of warped text behind its navigation. No scroll sync.
+    const inHeader = !!element.closest(".site-header");
+    const native = engine === "blink" && !inHeader && !element.parentElement?.closest(".glass");
+    let source: HTMLElement = element;
+    let scene: HTMLElement | undefined;
+    const portrait = !native && element.classList.contains("portrait-caption")
       ? document.querySelector<HTMLImageElement>(".portrait-art img") : null;
-    const scene = (portrait ?? landscape).cloneNode(true) as HTMLElement;
-    // Keep Astro's style scope, but never duplicate behavior/IDs/accessible content.
-    for (const node of [scene, ...scene.querySelectorAll<HTMLElement>("*")]) {
-      node.removeAttribute("id");
-      for (const name of node.getAttributeNames()) {
-        if (name.startsWith("data-") && !name.startsWith("data-astro-")) node.removeAttribute(name);
+    if (!native) {
+      const optics = document.createElement("div");
+      optics.className = "liquid-glass-optics";
+      optics.setAttribute("aria-hidden", "true");
+      source = document.createElement("div");
+      source.className = "liquid-glass-refraction";
+      scene = (portrait ?? landscape).cloneNode(true) as HTMLElement;
+      // Keep Astro's style scope, but never duplicate behavior/IDs/accessible content.
+      for (const node of [scene, ...scene.querySelectorAll<HTMLElement>("*")]) {
+        node.removeAttribute("id");
+        for (const name of node.getAttributeNames()) {
+          if (name.startsWith("data-") && !name.startsWith("data-astro-")) node.removeAttribute(name);
+        }
       }
+      if (portrait) {
+        scene.setAttribute("alt", "");
+        scene.style.objectFit = "cover";
+        scene.style.objectPosition = getComputedStyle(portrait).objectPosition;
+      }
+      scene.classList.add("liquid-glass-scenery");
+      source.append(scene);
+      optics.append(source);
+      element.prepend(optics);
     }
-    if (portrait) {
-      scene.setAttribute("alt", "");
-      scene.style.objectFit = "cover";
-      scene.style.objectPosition = getComputedStyle(portrait).objectPosition;
-    }
-    scene.classList.add("liquid-glass-scenery");
-    source.append(scene);
-    optics.append(source);
-    element.prepend(optics);
     const surface: Surface = {
-      element, optics, source, portrait, scene, visible: false,
+      element, source, portrait, scene, native, scrolls: !native && !portrait && !inHeader, visible: false,
       bend: element.matches(".header-pane, .portrait-caption, .journey-filters") ? 16 : 21,
     };
     surfaces.push(surface);
@@ -123,25 +147,30 @@ if (landscape) {
       });
     };
     element.addEventListener("pointermove", positionLight);
-    element.addEventListener("pointerenter", followInteraction);
-    element.addEventListener("pointerleave", followInteraction);
+    element.addEventListener("pointerenter", () => followInteraction(surface));
+    element.addEventListener("pointerleave", () => followInteraction(surface));
     element.addEventListener("pointerdown", event => {
       if (disabled() || reduced.matches) return;
+      if (event.target instanceof Element && event.target.closest(".glass") !== element) return;
       positionLight(event);
+      pressed = surface;
       element.dataset.glassPressed = "true";
       surface.lens?.update({ refraction: surface.bend * 1.18 });
-      followInteraction();
+      followInteraction(surface);
     });
-    const release = () => {
-      delete element.dataset.glassPressed;
-      surface.lens?.update({ refraction: surface.bend });
-      followInteraction();
-    };
-    // A release outside the panel must not leave its material pressed.
-    window.addEventListener("pointerup", release);
-    window.addEventListener("pointercancel", release);
-    window.addEventListener("blur", release);
   });
+
+  // One release handler, only for the pressed surface (including an outside release).
+  const release = () => {
+    if (!pressed) return;
+    delete pressed.element.dataset.glassPressed;
+    pressed.lens?.update({ refraction: pressed.bend });
+    followInteraction(pressed);
+    pressed = undefined;
+  };
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  window.addEventListener("blur", release);
 
   const preferenceChanged = () => {
     if (disabled()) {
@@ -152,15 +181,22 @@ if (landscape) {
         delete surface.element.dataset.glassPressed;
       }
     }
-    requestUpdate();
+    requestGeometry();
   };
   contrast.addEventListener("change", preferenceChanged);
   transparency.addEventListener("change", preferenceChanged);
-  window.addEventListener("scroll", requestUpdate, { passive: true });
-  window.addEventListener("resize", requestUpdate, { passive: true });
+  window.addEventListener("scroll", () => {
+    // Native lenses need no JS coordinates, style writes or alignment RAF on scroll.
+    if (surfaces.some(surface => surface.visible && surface.scrolls)) requestUpdate();
+  }, { passive: true });
+  window.addEventListener("resize", requestGeometry, { passive: true });
   // Mobile Safari's visible viewport changes when the address bar collapses.
-  window.visualViewport?.addEventListener("resize", requestUpdate, { passive: true });
-  document.addEventListener("toggle", requestUpdate, true);
-  document.fonts.ready.then(requestUpdate);
+  window.visualViewport?.addEventListener("resize", requestGeometry, { passive: true });
+  document.addEventListener("toggle", () => {
+    // Keep the dropdown's image aligned during its short opening scale transition.
+    if (!reduced.matches) followUntil = performance.now() + 200;
+    requestGeometry();
+  }, true);
+  document.fonts.ready.then(requestGeometry);
   requestUpdate();
 }
