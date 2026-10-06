@@ -60,7 +60,7 @@ const isCurrent = (href: string) => {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8h16M4 16h16" /></svg>
         </summary>
         <nav
-          class="mobile-menu-pane absolute right-0 top-full z-40 mt-3 w-52 p-2 shadow-lg"
+          class="mobile-menu-pane glass absolute right-0 top-full z-40 mt-3 w-52 p-2 shadow-lg"
           aria-label="移动端主导航"
         >
           <ul class="grid gap-1" role="list">
@@ -87,10 +87,10 @@ const isCurrent = (href: string) => {
 
 <style>
   .site-header { position: fixed; top: 1rem; left: 0; right: 0; z-index: 40; pointer-events: none; }
-  .header-pane { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.6rem; padding: .25rem 1.25rem; border-radius: 999px; pointer-events: auto; background: var(--color-surface-glass-strong); -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); }
+  .header-pane { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.6rem; padding: .25rem 1.25rem; border-radius: 999px; pointer-events: auto; background: var(--color-surface-glass-strong); }
   .brand-link { font-size: .9rem; letter-spacing: -.025em; }
   .nav-link[aria-current="page"] { background: color-mix(in srgb, var(--color-ink) 7%, transparent); border-radius: 999px; }
-  .mobile-menu-pane { border: 1px solid var(--color-line); border-radius: 1.2rem; background: var(--color-surface); }
+  .mobile-menu-pane { position: absolute; border-radius: 1.2rem; background: var(--color-surface-glass-strong); }
   summary::-webkit-details-marker { display: none; }
   :global(.tomphie-logo.brand-logo) {
     width: 1.5rem;

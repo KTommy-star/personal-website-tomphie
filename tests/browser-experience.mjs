@@ -34,21 +34,61 @@ test('the portrait artwork shows its lower half with the person centered and uno
   }
 });
 
-test('clear glass keeps the scenery visible across the functional panels', async () => {
+test('liquid glass refracts clear scenery across the functional panels', async () => {
   for (const theme of ['light', 'dark']) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: theme });
     await page.goto(url);
-    const materials = await page.locator('.header-pane, .story-atlas, .focus-lens, .route-card, .contact-sheet').evaluateAll(elements => {
-      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
-      const ctx = canvas.getContext('2d');
-      return elements.map(e => {
-        const style = getComputedStyle(e); ctx.clearRect(0,0,1,1); ctx.fillStyle = style.backgroundColor; ctx.fillRect(0,0,1,1);
-        return { surface: e.className, opacity: ctx.getImageData(0,0,1,1).data[3] / 255, blur: parseFloat(style.backdropFilter.match(/blur\(([^)]+)/)?.[1] ?? '0') };
+    for (const selector of ['.header-pane', '.story-atlas', '.focus-lens', '.route-card', '.contact-sheet', '.portrait-caption']) {
+      const panel = page.locator(selector).first();
+      await panel.scrollIntoViewIfNeeded();
+      await page.waitForFunction(s => document.querySelector(s)?.querySelector('.liquid-glass-refraction')?.style.filter.includes('url('), selector);
+      const material = await panel.evaluate(e => {
+        const style = getComputedStyle(e);
+        const source = e.querySelector('.liquid-glass-refraction');
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = style.backgroundColor; ctx.fillRect(0,0,1,1);
+        const id = source.style.filter.match(/#([^"')]+)/)?.[1];
+        const filter = document.getElementById(id);
+        return { mode: e.dataset.glass, opacity: ctx.getImageData(0,0,1,1).data[3]/255, blur: parseFloat(style.backdropFilter.match(/blur\(([^)]+)/)?.[1] ?? '0'), bend: [...filter.querySelectorAll('feDisplacementMap')].some(n => Number(n.getAttribute('scale')) > 0), decodedMap: filter.querySelector('feImage')?.getAttribute('href')?.startsWith('data:image/png') };
       });
-    });
-    assert(materials.every(m => m.opacity <= .3 && m.blur > 0 && m.blur <= 8), `${theme} panels must keep a subtle, working glass effect: ${JSON.stringify(materials)}`);
+      assert(material.mode === 'refractive' && material.bend && material.decodedMap, `${theme} ${selector}: real decoded optical map`);
+      assert(material.blur <= 1 && material.opacity <= (selector === '.portrait-caption' ? .5 : .2), `${theme} ${selector}: clear, not frosted`);
+    }
     await page.close();
   }
+});
+
+test('liquid glass actually bends pixels at the rim while its center stays clear', async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });
+  await page.goto(url);
+  const panel = page.locator('.route-card').first();
+  await panel.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('.route-card .liquid-glass-refraction')?.style.filter.includes('url('));
+  await panel.evaluate(e => {
+    for (const child of e.children) if (!child.classList.contains('liquid-glass-optics')) child.style.visibility = 'hidden';
+    const scene = e.querySelector('.liquid-glass-scenery');
+    scene.replaceChildren();
+    scene.style.background = 'repeating-linear-gradient(90deg, #073b4c 0 3px, #eef6d9 3px 7px)';
+  });
+  await page.waitForTimeout(350);
+  const refracted = (await panel.screenshot()).toString('base64');
+  await panel.evaluate(e => {
+    const id = e.querySelector('.liquid-glass-refraction').style.filter.match(/#([^"')]+)/)[1];
+    for (const node of document.getElementById(id).querySelectorAll('feDisplacementMap')) node.setAttribute('scale', '0');
+  });
+  const flat = (await panel.screenshot()).toString('base64');
+  const difference = await page.evaluate(async ([a,b]) => {
+    const decode = async data => { const img=new Image(); img.src=`data:image/png;base64,${data}`; await img.decode(); const c=document.createElement('canvas'); c.width=img.width; c.height=img.height; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0); return { width:c.width, height:c.height, pixels:ctx.getImageData(0,0,c.width,c.height).data }; };
+    const first=await decode(a), second=await decode(b); let rim=0, center=0, nr=0, nc=0;
+    for(let y=40;y<first.height-40;y++) for(let x=5;x<first.width-5;x++) {
+      const offset=(y*first.width+x)*4;
+      const diff=(Math.abs(first.pixels[offset]-second.pixels[offset])+Math.abs(first.pixels[offset+1]-second.pixels[offset+1])+Math.abs(first.pixels[offset+2]-second.pixels[offset+2]))/3;
+      if(x<28 || x>first.width-28) {rim+=diff;nr++;} else if(x>50 && x<first.width-50) {center+=diff;nc++;}
+    }
+    return {rim:rim/nr,center:center/nc};
+  }, [refracted,flat]);
+  assert(difference.rim > 3 && difference.rim > difference.center*2, `visible bending, not just a filter declaration: ${JSON.stringify(difference)}`);
+  await page.close();
 });
 
 test('the writing head never leaves dots on undrawn strokes', async () => {

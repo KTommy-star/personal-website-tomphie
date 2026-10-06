@@ -19,16 +19,3 @@ if (!reduced.matches) {
     });
   }
 }
-
-document.querySelectorAll<HTMLElement>("[data-glass-light]").forEach((element) => {
-  let frame = 0;
-  element.addEventListener("pointermove", (event) => {
-    if (event.pointerType !== "mouse" || reduced.matches || frame) return;
-    frame = requestAnimationFrame(() => {
-      const rect = element.getBoundingClientRect();
-      element.style.setProperty("--pointer-x", `${((event.clientX - rect.left) / rect.width) * 100}%`);
-      element.style.setProperty("--pointer-y", `${((event.clientY - rect.top) / rect.height) * 100}%`);
-      frame = 0;
-    });
-  });
-});

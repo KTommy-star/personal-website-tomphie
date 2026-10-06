@@ -7,10 +7,10 @@
   --color-line: #bdcfcc;
   --color-path: #24605e;
   --color-surface: #f5faf7;
-  --color-surface-glass: rgba(248, 253, 250, 0.14);
-  --color-surface-glass-strong: rgba(248, 253, 250, 0.24);
-  --color-surface-glass-hover: rgba(248, 253, 250, 0.22);
-  --color-surface-glass-mobile: rgba(248, 253, 250, 0.22);
+  --color-surface-glass: rgba(248, 253, 250, 0.06);
+  --color-surface-glass-strong: rgba(248, 253, 250, 0.12);
+  --color-surface-glass-hover: rgba(248, 253, 250, 0.1);
+  --color-surface-glass-mobile: rgba(248, 253, 250, 0.1);
   --color-on-ink: #ffffff;
   --color-on-path: #ffffff;
   --font-sans: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -34,10 +34,10 @@
     --color-line: #38565f;
     --color-path: #a5d5c7;
     --color-surface: #102c37;
-    --color-surface-glass: rgba(18, 48, 60, 0.18);
-    --color-surface-glass-strong: rgba(18, 48, 60, 0.28);
-    --color-surface-glass-hover: rgba(35, 67, 78, 0.26);
-    --color-surface-glass-mobile: rgba(18, 48, 60, 0.26);
+    --color-surface-glass: rgba(18, 48, 60, 0.08);
+    --color-surface-glass-strong: rgba(18, 48, 60, 0.16);
+    --color-surface-glass-hover: rgba(35, 67, 78, 0.14);
+    --color-surface-glass-mobile: rgba(18, 48, 60, 0.14);
     --color-on-ink: #081c27;
     --color-on-path: #081c27;
   }
@@ -51,10 +51,10 @@
       --color-line: #38565f;
       --color-path: #a5d5c7;
       --color-surface: #102c37;
-      --color-surface-glass: rgba(18, 48, 60, 0.18);
-      --color-surface-glass-strong: rgba(18, 48, 60, 0.28);
-      --color-surface-glass-hover: rgba(35, 67, 78, 0.26);
-      --color-surface-glass-mobile: rgba(18, 48, 60, 0.26);
+      --color-surface-glass: rgba(18, 48, 60, 0.08);
+      --color-surface-glass-strong: rgba(18, 48, 60, 0.16);
+      --color-surface-glass-hover: rgba(35, 67, 78, 0.14);
+      --color-surface-glass-mobile: rgba(18, 48, 60, 0.14);
       --color-on-ink: #081c27;
       --color-on-path: #081c27;
     }
@@ -133,14 +133,66 @@ main { padding-top: 6rem; }
 .eyebrow::before { content: ""; width: 1.4rem; height: 1px; background: currentColor; }
 .editorial-title { font-family: var(--font-serif); font-weight: 500; font-size: clamp(2.15rem, 4.1vw, 3.75rem); line-height: 1.45; letter-spacing: -.035em; }
 /* Keep the standard declaration last: CSS minification can otherwise drop it. */
-.glass { position: relative; background: var(--color-surface-glass); border: 1px solid color-mix(in srgb, var(--color-surface) 42%, transparent); box-shadow: inset 0 1px 0 rgba(255,255,255,.48), inset 0 -1px 0 rgba(255,255,255,.12), 0 14px 48px rgba(19,51,55,.07); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
-.glass::before { content: ""; position: absolute; inset: 2px; border: 1px solid rgba(255,255,255,.18); border-radius: inherit; pointer-events: none; }
-.glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(ellipse at var(--pointer-x, 15%) var(--pointer-y, 0%), rgba(255,255,255,.16), transparent 55%); opacity: .45; transition: opacity 200ms ease; }
-.glass { isolation: isolate; }
-.glass::after { z-index: -1; }
-.glass:hover::after { opacity: .75; }
+.glass {
+  --glass-blur: .6px;
+  --glass-rim: rgba(255,255,255,.6);
+  position: relative;
+  isolation: isolate;
+  background: var(--color-surface-glass);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 38%, transparent);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.52), inset 0 -1px 1px rgba(255,255,255,.17), 0 12px 40px rgba(19,51,55,.1), 0 2px 8px rgba(19,51,55,.04);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(112%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(112%);
+}
+[data-theme="dark"] .glass { --glass-rim: rgba(212,244,244,.32); }
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px solid transparent;
+  background: conic-gradient(from 135deg at var(--pointer-x, 30%) var(--pointer-y, 15%), transparent, var(--glass-rim) 18%, transparent 32%, rgba(186,224,230,.22) 54%, var(--glass-rim) 72%, transparent 85%) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  z-index: -1;
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse at var(--pointer-x, 25%) var(--pointer-y, 0%), rgba(255,255,255,.2), transparent 52%);
+  opacity: .22;
+  transition: opacity 250ms ease;
+  z-index: -1;
+}
+.glass:hover::after, .glass:focus-within::after { opacity: .5; }
+.glass[data-glass-pressed]::after { opacity: .95; }
+.liquid-glass-optics {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -2;
+  opacity: .86;
+}
+.liquid-glass-refraction { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
+.liquid-glass-scenery {
+  position: absolute !important;
+  inset: auto !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 0 !important;
+  max-width: none;
+  pointer-events: none;
+  transform-origin: top left;
+}
+.portrait-caption .liquid-glass-optics { opacity: .62; }
 .glass, .reading-surface { transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease, box-shadow 700ms ease; }
-.reading-surface { background: color-mix(in srgb, var(--color-paper) 80%, transparent); }
+.reading-surface { background: color-mix(in srgb, var(--color-paper) 66%, transparent); }
 .pill-link { display: inline-flex; min-height: 3rem; align-items: center; justify-content: center; gap: 1rem; padding: .7rem 1.4rem; border-radius: 999px; text-decoration: none; font-size: .85rem; font-weight: 500; }
 .pill-link svg { width: 1rem; height: 1rem; }
 .pill-link--solid { background: var(--color-ink); color: var(--color-on-ink); }
@@ -153,6 +205,7 @@ main { padding-top: 6rem; }
   :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
   :root body .reading-surface { background: var(--color-paper); }
   :root body .glass::after { display: none; }
+  :root body .liquid-glass-optics, :root body .glass::before { display: none; }
 }
 
 .skip-link {

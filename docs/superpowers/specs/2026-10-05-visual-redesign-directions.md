@@ -18,13 +18,13 @@
 | Astro + 现有 Tailwind / TypeScript | 保留 | 内容、静态发布和现有路由可复用，不为改视觉迁移框架 |
 | Motion 原生 JavaScript 版 | 已接入 14.0.0，唯一新增动效主库 | 同一体系处理即时按下反馈、物理弹性、SVG 与滚动关联；不依赖 React |
 | GSAP / ScrollTrigger | 本轮不接入 | 强大的滚动编排备选；本项目更重视轻量、可打断的触控反馈，不维护两套动画生命周期 |
-| liquidGL | 光学折射增强候选 | 先做局部原型，验证画面、动态同步和手机成本；不直接全页面启用，也不假设项目 README 的性能描述等同于本项目实测 |
-| 原生 CSS / SVG 玻璃材质 | 共享基础层 | 不支持折射、低性能设备、减少透明度设置时仍可读可用；模糊透明不冒称原生 Apple Liquid Glass |
+| gentpan/liquidglass 零依赖 SVG 引擎 | 2026-10-06 已固定 v1.0.0 来源并接入全站功能玻璃 | 独立背景副本的真实折射，不依赖 Chromium 专属的 SVG backdrop；静态自托管，不使用截图或其组件/动效体系 |
+| 原生 CSS / SVG 玻璃材质 | 共享材质、边光与降级层 | 文字清晰、按压高光、减少透明度/高对比下仍可读可用；不是苹果原生 SDK |
 | Lucide SVG | 图标来源 | 只按需取用导航、主题、复制、展开等图标；不替换个人 Logo，不引入整套图标运行时 |
 | React Bits / Aceternity UI | 仅作为视觉技法参考 | 不直接复制成品区块，不引入 React 来拼装 Astro 页面 |
 | Lusion | 参考视觉叙事的组织方法 | 借鉴内容与交互围绕一个焦点展开的思路，不复制其素材或要求全站 3D |
 
-实施前已核查 Motion 14.0.0 与 liquidGL 3.0.0。Motion 精确固定进锁文件；liquidGL 官方说明 CSS 动画实时折射不受支持，暂不加入截屏渲染依赖。本版使用 CSS/SVG 通透玻璃，不声称实现苹果原生自适应折射。不购买付费素材或 Motion+。
+实施前已核查 Motion 14.0.0 与 liquidGL 3.0.0。Motion 精确固定进锁文件；liquidGL 官方说明 CSS 动画实时折射不受支持，因此不采用其截屏方式。2026-10-06 用户要求真实通透折射后，已改用固定版本的零依赖 SVG 光学引擎，具体版本、许可、性能策略与浏览器边界见 `docs/design/refracted-landscape.md`。不声称实现苹果原生自适应材质，不购买付费素材或 Motion+。
 
 `apple-design` 已安装到 `/Users/kongsanjin/.codex/skills/apple-design`。它是 Emil Kowalski 仓库中的社区设计指导，不是 Apple 官方 SDK。采用其即时响应、空间连续性、可打断动作和无障碍原则；遇到兼容性或具体参数问题仍以官方文档和实际表现为准。
 
