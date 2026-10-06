@@ -202,8 +202,8 @@ main { padding-top: 6rem; }
 @media (max-width: 24rem) { .shell { width: calc(100% - 2rem); } }
 @supports not (backdrop-filter: blur(1px)) { :root body .glass { background: var(--color-surface); color: var(--color-ink); } }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  :root body .reading-surface { background: var(--color-paper); }
+  :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; transition: none; }
+  :root body .reading-surface { background: var(--color-paper); transition: none; }
   :root body .glass::after { display: none; }
   :root body .liquid-glass-optics, :root body .glass::before { display: none; }
 }

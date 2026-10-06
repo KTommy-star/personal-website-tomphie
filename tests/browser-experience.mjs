@@ -114,6 +114,53 @@ test('scrolling glass cards does not rewrite detached full-screen scenery every 
   await page.close();
 });
 
+test('WebKit compatibility uses one shared landscape, not scrolling photo copies in every card', async () => {
+  // This exercises the iOS code path in Chromium, not a claim of iPhone hardware testing.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1' });
+  await page.addInitScript(() => Object.defineProperty(navigator, 'userAgentData', { value: undefined }));
+  await page.goto(url);
+  await page.locator('.route-card').first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  assert.equal(await page.locator('body > .landscape > canvas').count(), 1, 'one shared GPU scene serves every lens');
+  assert.equal(await page.locator('.route-card .liquid-glass-scenery, .header-pane .liquid-glass-scenery, .story-atlas .liquid-glass-scenery').count(), 0, 'no independently shifted full-screen copies');
+  assert.equal(await page.locator('.header-pane').getAttribute('data-glass'), 'refractive');
+  await page.evaluate(() => {
+    window.sceneryWrites = 0;
+    window.sceneryObserver = new MutationObserver(records => { window.sceneryWrites += records.filter(record => record.target.classList?.contains('liquid-glass-scenery')).length; });
+    window.sceneryObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+  });
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.synthesizeScrollGesture', { x: 250, y: 650, yDistance: -450, speed: 600, gestureSourceType: 'touch' });
+  assert.equal(await page.evaluate(() => { window.sceneryObserver.disconnect(); return window.sceneryWrites; }), 0);
+  await page.locator('[data-theme-toggle]').click();
+  await page.waitForTimeout(230);
+  const fade = await page.locator('[data-landscape-night]').evaluate(e => Number(getComputedStyle(e).opacity));
+  assert(fade > 0 && fade < 1, 'the shared scene and its lenses use the same live day/night fade');
+  await page.locator('.mobile-menu summary').click();
+  await page.waitForTimeout(200);
+  assert.equal(await page.locator('.mobile-menu-pane').getAttribute('hidden'), null);
+  assert.equal(await page.locator('.mobile-menu-pane').evaluate(e => !!e.parentElement.closest('.glass')), false, 'no nested backdrop root prevents real page sampling');
+  await page.locator('.mobile-menu-pane a').last().focus();
+  await page.keyboard.press('Escape');
+  assert(await page.locator('.mobile-menu-pane').isHidden());
+  await page.emulateMedia({ contrast: 'more' });
+  await page.waitForFunction(() => !document.querySelector('.landscape').hasAttribute('data-glass-scene'));
+  assert.equal(await page.locator('.header-pane').evaluate(e => getComputedStyle(e).backdropFilter), 'none');
+  assert.equal(await page.locator('.landscape-day').evaluate(e => getComputedStyle(e).visibility), 'visible', 'turning off optics restores the original scene');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.close();
+});
+
+test('the desktop header refracts the live backdrop instead of an isolated wallpaper', async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, reducedMotion: 'reduce' });
+  await page.goto(url);
+  await page.waitForTimeout(400);
+  assert.equal(await page.locator('.header-pane > .liquid-glass-optics .liquid-glass-scenery').count(), 0);
+  assert(await page.locator('.header-pane').evaluate(e => e.style.backdropFilter.includes('url(')));
+  await page.close();
+});
+
 test('the writing head never leaves dots on undrawn strokes', async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 960 }, colorScheme: 'light' });
   await page.goto(url, { waitUntil: 'domcontentloaded' });

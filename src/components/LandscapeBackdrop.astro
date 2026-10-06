@@ -19,6 +19,9 @@ import night from "../assets/landscape/night.png";
 
 <style>
   .landscape { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--color-paper); }
+  .landscape :global(.landscape-glass-canvas) { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
+  .landscape[data-glass-scene] :global(.landscape-glass-canvas) { visibility: visible; }
+  .landscape[data-glass-scene] > :global(:not(canvas)) { visibility: hidden; }
   .landscape-image, .landscape-light, .landscape-veil { position: absolute; inset: 0; }
   .landscape-image :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 58% center; }
   .landscape-night { opacity: 0; }
@@ -35,6 +38,8 @@ import night from "../assets/landscape/night.png";
   :global(.theme-ready) .landscape-image, :global(.theme-ready) .landscape-light, :global(.theme-ready) .landscape-veil { transition: opacity 900ms cubic-bezier(.3,0,.2,1); }
   :global(.theme-ready) .scene-sun, :global(.theme-ready) .scene-moon { transition: opacity 700ms ease, transform 900ms cubic-bezier(.3,0,.2,1); }
   @media (max-width: 47.99rem) {
+    /* Keep the mountain framing stable while iOS's address bar expands/collapses. */
+    .landscape { bottom: auto; height: 100lvh; }
     .landscape-image :global(img) { object-position: 54% center; }
     .landscape-light { background: rgba(240,247,245,.3); }
     .landscape-veil { background: rgba(5,22,32,.35); }
