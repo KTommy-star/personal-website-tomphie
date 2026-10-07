@@ -1,0 +1,10 @@
+---
+import { getCollection } from "astro:content";
+import ContentArticle from "../../components/content/ContentArticle.astro";
+import { publicEntries } from "../../lib/public-content";
+export async function getStaticPaths() {
+  return publicEntries(await getCollection("notes")).map(entry => ({ params: { id: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+---
+<ContentArticle entry={entry} collection="notes" />

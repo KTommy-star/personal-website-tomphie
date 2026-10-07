@@ -123,4 +123,22 @@ describe("static routes", () => {
     expect(robots).toContain("User-agent: *");
     expect(robots).toContain("Allow: /");
   });
+  it("builds an unconfigured, private-by-default standalone workbench", async () => {
+    const html = await readFile(new URL("../dist/admin/index.html", import.meta.url), "utf8");
+    expect(html).toContain("私人写作工作台");
+    expect(html).toContain('content="noindex,nofollow,noarchive"');
+    expect(html).toContain('id="workspace" hidden');
+    expect(html).toContain("尚未连接私密云端");
+    expect(html).not.toContain("data-glass");
+    expect(html).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(html).not.toContain("GITHUB_TOKEN");
+    const home = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
+    const scripts = (text: string) => [...text.matchAll(/<script[^>]+src="([^"]+)"/g)].map(match => match[1]);
+    const homeScripts = scripts(home);
+    const editorScripts = scripts(html).filter(src => !homeScripts.includes(src));
+    expect(editorScripts.length).toBeGreaterThan(0);
+    const bundle = (src: string) => readFile(new URL(`../dist/${src.replace(/^\//, "")}`, import.meta.url), "utf8");
+    expect((await Promise.all(editorScripts.map(bundle))).join("\n")).toContain("tomphie-workbench-session");
+    expect((await Promise.all(homeScripts.map(bundle))).join("\n")).not.toContain("tomphie-workbench-session");
+  });
 });

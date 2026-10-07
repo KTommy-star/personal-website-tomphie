@@ -13,21 +13,35 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
     "test": "npm run test:unit",
-    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/theme.test.ts tests/journey-content.test.ts",
+    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/theme.test.ts tests/journey-content.test.ts tests/public-content.test.ts tests/public-markdown.test.ts tests/workbench-content.test.ts tests/workbench-api.test.ts tests/workbench-publisher.test.ts tests/workbench-preview.test.ts",
     "test:browser": "node --test tests/browser-experience.mjs",
     "test:dist": "vitest run tests/build-output.test.ts",
     "test:watch": "vitest",
     "verify": "npm run test:unit && npm run check && npm run build && npm run test:dist"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "7.3.2",
+    "@supabase/supabase-js": "2.117.2",
     "@tailwindcss/vite": "4.3.3",
     "astro": "7.3.2",
+    "dompurify": "3.4.16",
+    "katex": "0.18.2",
+    "marked": "18.1.0",
+    "marked-katex-extension": "5.1.13",
     "motion": "14.0.0",
+    "rehype-katex": "7.0.1",
+    "rehype-sanitize": "6.0.0",
+    "remark-math": "6.0.0",
     "tailwindcss": "4.3.3"
+  },
+  "overrides": {
+    "katex": "$katex"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@types/jsdom": "30.0.0",
     "@types/node": "24.13.4",
+    "jsdom": "30.1.2",
     "typescript": "6.0.3",
     "vitest": "5.0.0"
   }

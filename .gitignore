@@ -5,3 +5,8 @@ dist/
 .astro/
 .npm-cache/
 .DS_Store
+.env
+.env.*
+!.env.example
+.supabase/
+supabase/.temp/

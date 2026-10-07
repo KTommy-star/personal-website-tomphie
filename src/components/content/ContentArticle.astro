@@ -1,0 +1,42 @@
+---
+import { render, type CollectionEntry } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { withBase } from "../../lib/paths";
+import type { Collection } from "../../lib/workbench-content";
+import "../../styles/content.css";
+import "katex/dist/katex.min.css";
+interface Props { entry: CollectionEntry<Collection>; collection: Collection }
+const { entry, collection } = Astro.props;
+const { Content, headings } = await render(entry);
+const data = entry.data;
+const extra = data as unknown as Record<string, unknown>;
+const label = { notes: "笔记", research: "科研", projects: "项目" }[collection];
+const toc = headings.filter(heading => heading.depth <= 3);
+const links = (extra.links ?? []) as { label: string; url: string }[];
+---
+
+<BaseLayout title={data.title} description={data.summary}>
+  <article class="content-article shell">
+    <header class="article-heading">
+      <a class="article-back" href={withBase(`/${collection}/`, import.meta.env.BASE_URL)}>返回{label}</a>
+      <h1>{data.title}</h1>
+      <p class="article-summary">{data.summary}</p>
+      <p class="content-meta">
+        {data.publishedAt && <time datetime={data.publishedAt.toISOString()}>{data.publishedAt.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}</time>}
+        {typeof extra.topic === "string" && <span>{extra.topic}</span>}
+        {Array.isArray(extra.authors) && <span>{extra.authors.join("、")}</span>}
+      </p>
+      <ul class="content-tags" aria-label="标签">{data.tags.map(tag => <li>{tag}</li>)}</ul>
+      {data.cover && <img class="article-cover" src={withBase(data.cover, import.meta.env.BASE_URL)} alt={`${data.title}封面`} width="1200" height="675" />}
+    </header>
+    <div class="article-layout">
+      <div class="article-reading">
+        {typeof extra.contribution === "string" && <aside class="article-facts"><h2>我的贡献</h2><p>{extra.contribution}</p></aside>}
+        {collection === "projects" && <dl class="article-facts">{[["问题", extra.challenge], ["我的角色", extra.role], ["结果", extra.outcome]].map(([title, value]) => <div><dt>{String(title)}</dt><dd>{String(value ?? "")}</dd></div>)}</dl>}
+        <div class="article-prose"><Content /></div>
+        {links.length > 0 && <section class="article-links"><h2>相关链接</h2><ul>{links.map(link => <li><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}</ul></section>}
+      </div>
+      {toc.length > 0 && <nav class="article-toc" aria-label="文章目录"><p>这篇记录</p><ul>{toc.map(heading => <li class:list={{ "toc-nested": heading.depth === 3 }}><a href={`#${heading.slug}`}>{heading.text}</a></li>)}</ul></nav>}
+    </div>
+  </article>
+</BaseLayout>

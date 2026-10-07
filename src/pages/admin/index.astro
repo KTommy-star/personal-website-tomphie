@@ -1,0 +1,100 @@
+---
+import ThemeToggle from "../../components/ThemeToggle.astro";
+import TomphieLogo from "../../components/TomphieLogo.astro";
+import { withBase } from "../../lib/paths";
+import { assertPublicWorkbenchKey } from "../../lib/workbench-content";
+import "../../styles/workbench.css";
+import "katex/dist/katex.min.css";
+
+const config = {
+  url: import.meta.env.PUBLIC_WORKBENCH_URL ?? "",
+  key: import.meta.env.PUBLIC_WORKBENCH_KEY ?? "",
+  username: import.meta.env.PUBLIC_WORKBENCH_USERNAME ?? "",
+  email: import.meta.env.PUBLIC_WORKBENCH_EMAIL ?? "",
+};
+const configured = Boolean(config.url && config.key && config.email && config.username);
+assertPublicWorkbenchKey(config.key);
+const home = import.meta.env.PUBLIC_SITE_URL || withBase("/", import.meta.env.BASE_URL);
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta name="theme-color" content="#EDF4F3" />
+    <meta name="color-scheme" content="light dark" />
+    <title>私人写作工作台 · Tomphie</title>
+    <link rel="icon" href={withBase("/favicon.svg", import.meta.env.BASE_URL)} />
+    <script is:inline>
+      try {
+        const saved = localStorage.getItem("tomphie-theme");
+        document.documentElement.dataset.theme = saved === "light" || saved === "dark" ? saved : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      } catch { /* Follow the system theme when storage is unavailable. */ }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workbench-main">跳到写作区</a>
+    <header class="workbench-header">
+      <a class="workbench-brand" href={home} aria-label="返回 Tomphie 首页"><span class="workbench-logo"><TomphieLogo variant="icon" /></span><span>Tomphie <span class="quiet">/ 写作工作台</span></span></a>
+      <div class="header-actions"><ThemeToggle /><button id="sign-out" type="button" hidden>退出</button></div>
+    </header>
+    <main id="workbench-main" data-workbench data-url={config.url} data-key={config.key} data-username={config.username} data-email={config.email}>
+      <section id="login-panel" class="login-panel" aria-labelledby="login-title">
+        <p class="quiet">私人空间</p>
+        <h1 id="login-title">把想法写下来。</h1>
+        <p>科研、项目与笔记，先保存在自己的草稿里。<br />准备好了，再发布到网站。</p>
+        <p id="configuration-notice" class="notice" hidden={configured}>工作台尚未连接私密云端。完成管理员账号配置后，即可登录并跨设备写作。</p>
+        <form id="login-form" hidden={!configured}>
+          <label for="account">管理员账号</label>
+          <input id="account" name="account" autocomplete="username" required />
+          <label for="password">密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <label class="check-label"><input id="remember" name="remember" type="checkbox" />记住这台设备</label>
+          <button class="primary" type="submit">登录工作台</button>
+        </form>
+        <p id="login-error" class="error" role="alert"></p>
+        <noscript><p class="notice">请启用 JavaScript 以登录和编辑私密草稿。</p></noscript>
+      </section>
+      <section id="workspace" hidden aria-label="私人写作工作台">
+        <div class="workspace-bar"><h1>私人草稿</h1><p id="save-status" role="status" aria-live="polite">选择或新建一篇草稿</p><button id="save-draft" type="button" disabled>保存草稿</button><button id="publish-draft" class="primary" type="button" disabled>发布到网站</button></div>
+        <p id="workbench-error" class="error" role="alert"></p>
+        <div id="conflict-actions" class="notice" hidden><p>其他设备已更新此草稿，当前文字仍保留在编辑区。请先复制或下载当前正文，再决定是否重新载入云端版本。</p><button id="download-draft" type="button">下载当前草稿</button><button id="reload-draft" type="button">重新载入云端版本</button></div>
+        <p id="publish-status" role="status" aria-live="polite"></p>
+        <p id="publish-warning" class="notice" role="status" hidden></p>
+        <a id="published-link" target="_blank" rel="noopener noreferrer" hidden>查看公开页面</a>
+        <div class="mobile-tabs" aria-label="工作区视图"><button type="button" data-view="directory" aria-pressed="false">草稿目录</button><button type="button" data-view="editor" aria-pressed="true">编辑</button><button type="button" data-view="preview" aria-pressed="false">预览</button></div>
+        <div class="workbench-grid" data-view="editor">
+          <aside class="directory-panel" aria-labelledby="directory-title">
+            <h2 id="directory-title">草稿目录</h2>
+            <label for="collection">栏目</label><select id="collection"><option value="notes">笔记</option><option value="research">科研</option><option value="projects">项目</option></select>
+            <button id="new-draft" type="button">＋ 新建草稿</button>
+            <p id="directory-state" class="quiet" role="status">正在读取草稿…</p><ul id="draft-list"></ul>
+            <p class="directory-note">草稿与图片保存在私密云端。保存不会发布，也不会更新公开网站。</p>
+          </aside>
+          <section class="editor-panel" aria-labelledby="editor-title">
+            <h2 id="editor-title">编辑</h2>
+            <p id="editor-empty" class="quiet">从目录选择草稿，或新建一篇开始写作。</p>
+            <form id="draft-form" hidden>
+              <label for="title">标题 <span class="quiet">必填</span></label><input id="title" name="title" maxlength="160" required />
+              <label for="slug">页面地址 <span class="quiet">小写字母、数字与连字符</span></label><input id="slug" name="slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="80" required /><p id="slug-note" class="field-help">发布后沿用此地址。</p>
+              <label for="summary">摘要 <span class="quiet">必填</span></label><textarea id="summary" name="summary" rows="2" maxlength="1000" required></textarea>
+              <div class="field-pair"><div><label for="tags">标签</label><input id="tags" name="tags" placeholder="用逗号分隔" /></div><div><label for="publishedAt">发布日期</label><input id="publishedAt" name="publishedAt" type="date" /></div></div>
+              <details><summary>其他信息</summary><label for="related">相关内容地址</label><input id="related" name="related" placeholder="notes/example，用逗号分隔" /><label for="cover">封面图片</label><div class="cover-row"><input id="cover" name="cover" placeholder="上传封面，或填写图片地址" /><button id="upload-cover" type="button">上传封面</button></div><p class="field-help">更新日期在发布时自动生成。</p></details>
+              <details id="collection-details"><summary id="collection-details-title">笔记信息</summary>
+              <fieldset data-fields="notes"><legend>笔记信息</legend><label for="topic">主题 <span class="quiet">必填</span></label><input id="topic" name="topic" /><div class="field-pair"><div><label for="series">系列</label><input id="series" name="series" /></div><div><label for="order">系列顺序</label><input id="order" name="order" type="number" min="0" step="1" /></div></div></fieldset>
+              <fieldset data-fields="research" hidden disabled><legend>科研信息</legend><div class="field-pair"><div><label for="kind">成果类型</label><select id="kind" name="kind"><option value="paper">论文</option><option value="report">报告</option><option value="patent">专利</option><option value="dataset">数据集</option><option value="code">代码</option><option value="competition">竞赛</option></select></div><div><label for="research-status">进展</label><select id="research-status" name="status"><option value="in-progress">进行中</option><option value="submitted">已提交</option><option value="published">已发表</option><option value="completed">已完成</option></select></div></div><label for="authors">作者 <span class="quiet">用逗号分隔</span></label><input id="authors" name="authors" /><label for="contribution">我的贡献 <span class="quiet">必填</span></label><textarea id="contribution" name="contribution" rows="2"></textarea></fieldset>
+              <fieldset data-fields="projects" hidden disabled><legend>项目信息</legend><div class="field-pair"><div><label for="startedAt">开始日期 <span class="quiet">必填</span></label><input id="startedAt" name="startedAt" type="date" /></div><div><label for="endedAt">结束日期</label><input id="endedAt" name="endedAt" type="date" /></div></div><label for="challenge">要解决的问题 <span class="quiet">必填</span></label><textarea id="challenge" name="challenge" rows="2"></textarea><label for="role">我的角色 <span class="quiet">必填</span></label><input id="role" name="role" /><label for="outcome">结果 <span class="quiet">必填</span></label><textarea id="outcome" name="outcome" rows="2"></textarea></fieldset>
+              <div id="links-field" hidden><label for="links">相关链接 <span class="quiet">每行：名称 | https://地址</span></label><textarea id="links" name="links" rows="2"></textarea></div></details>
+              <label for="body">正文</label><div class="markdown-toolbar" role="group" aria-label="Markdown 格式"><button type="button" data-format="heading">标题</button><button type="button" data-format="bold">加粗</button><button type="button" data-format="list">列表</button><button type="button" data-format="quote">引用</button><button type="button" data-format="code">代码</button><button type="button" data-format="link">链接</button><button type="button" data-format="math">公式</button><button id="upload-body" type="button">插入图片</button></div>
+              <textarea id="body" name="body" rows="20" maxlength="150000" spellcheck="false" required aria-describedby="markdown-help"></textarea><p id="markdown-help" class="field-help">支持 Markdown；行内公式用 $…$，独立公式用 $$…$$。</p>
+              <input id="image-file" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+            </form>
+          </section>
+          <section class="preview-panel" aria-labelledby="preview-title"><h2 id="preview-title">阅读预览</h2><p class="field-help">这里的预览只对你可见。公开网站以发布后的页面为准。</p><article id="preview" class="markdown-preview"><p class="quiet">正文预览会显示在这里。</p></article></section>
+        </div>
+      </section>
+    </main>
+    <script>import "../../scripts/workbench";</script>
+  </body>
+</html>

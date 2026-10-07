@@ -20,6 +20,10 @@ jobs:
     env:
       SITE_URL: ${{ vars.SITE_URL }}
       BASE_PATH: ${{ vars.BASE_PATH }}
+      PUBLIC_WORKBENCH_URL: ${{ vars.PUBLIC_WORKBENCH_URL }}
+      PUBLIC_WORKBENCH_KEY: ${{ vars.PUBLIC_WORKBENCH_KEY }}
+      PUBLIC_WORKBENCH_USERNAME: ${{ vars.PUBLIC_WORKBENCH_USERNAME }}
+      PUBLIC_WORKBENCH_EMAIL: ${{ vars.PUBLIC_WORKBENCH_EMAIL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -1,12 +1,17 @@
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { resolveDeployment } from "./src/lib/deployment.js";
+import { unified } from "@astrojs/markdown-remark";
+import { publicMarkdown } from "./src/lib/public-markdown.ts";
 
 const deployment = resolveDeployment(process.env);
 
 export default defineConfig({
   ...deployment,
   output: "static",
+  markdown: {
+    processor: unified(publicMarkdown),
+  },
   vite: {
     plugins: [tailwindcss()],
     build: {

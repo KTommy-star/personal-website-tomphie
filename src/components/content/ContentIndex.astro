@@ -1,0 +1,55 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import { publicEntries } from "../../lib/public-content";
+import { withBase } from "../../lib/paths";
+import type { Collection } from "../../lib/workbench-content";
+import "../../styles/content.css";
+interface Props { collection: Collection; empty: string }
+const { collection, empty } = Astro.props;
+const entries = publicEntries(await getCollection(collection)) as CollectionEntry<Collection>[];
+const base = import.meta.env.BASE_URL;
+const subject = (entry: CollectionEntry<Collection>) => {
+  const data = entry.data as unknown as Record<string, unknown>;
+  return String(data.topic ?? entry.data.tags[0] ?? "记录");
+};
+const topics = [...new Set(entries.map(subject))];
+---
+
+<section class="content-library shell" data-content-library>
+  {entries.length ? <>
+    <div class="content-tools">
+      <label class="content-search">搜索内容<input type="search" placeholder="标题、摘要或标签" data-content-search /></label>
+      <label class="content-filter">主题<select data-content-filter><option value="">全部主题</option>{topics.map(topic => <option value={topic}>{topic}</option>)}</select></label>
+      <p aria-live="polite" data-content-count>{entries.length} 篇公开记录</p>
+    </div>
+    <div class="content-records" role="list">
+      {entries.map(entry => <article class:list={["content-record", { "with-cover": !!entry.data.cover }]} role="listitem" data-content-record data-search={`${entry.data.title} ${entry.data.summary} ${entry.data.tags.join(" ")}`} data-topic={subject(entry)}>
+        {entry.data.cover && <a class="content-cover" href={withBase(`/${collection}/${entry.id}/`, base)} tabindex="-1" aria-hidden="true"><img src={withBase(entry.data.cover, base)} alt="" loading="lazy" width="640" height="400" /></a>}
+        <div>
+          <p class="content-meta">{subject(entry)}{entry.data.publishedAt && <> / <time datetime={entry.data.publishedAt.toISOString()}>{entry.data.publishedAt.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}</time></>}</p>
+          <h2><a href={withBase(`/${collection}/${entry.id}/`, base)}>{entry.data.title}</a></h2>
+          <p class="content-summary">{entry.data.summary}</p>
+          <ul class="content-tags" aria-label="标签">{entry.data.tags.map(tag => <li>{tag}</li>)}</ul>
+        </div>
+      </article>)}
+    </div>
+    <p class="content-empty" hidden data-content-no-results>没有找到匹配的内容，试试其他关键词或主题</p>
+  </> : <div class="content-empty"><p>{empty}</p><p>新的公开记录会在这里逐渐生长</p></div>}
+</section>
+
+<script>
+  import { matchingEntry } from "../../lib/public-content";
+  document.querySelectorAll<HTMLElement>("[data-content-library]").forEach(root => {
+    const search = root.querySelector<HTMLInputElement>("[data-content-search]");
+    const filter = root.querySelector<HTMLSelectElement>("[data-content-filter]");
+    if (!search || !filter) return;
+    const records = [...root.querySelectorAll<HTMLElement>("[data-content-record]")];
+    const update = () => {
+      let count = 0;
+      for (const record of records) { record.hidden = !matchingEntry(record.dataset.search ?? "", search.value, filter.value, record.dataset.topic ?? ""); if (!record.hidden) count++; }
+      const total = root.querySelector("[data-content-count]"); if (total) total.textContent = `${count} 篇公开记录`;
+      const empty = root.querySelector<HTMLElement>("[data-content-no-results]"); if (empty) empty.hidden = count !== 0;
+    };
+    search.addEventListener("input", update); filter.addEventListener("change", update);
+  });
+</script>

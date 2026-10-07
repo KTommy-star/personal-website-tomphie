@@ -1,0 +1,6 @@
+project_id = "tomphie-workbench"
+
+[functions.publish-content]
+verify_jwt = false
+# The handler authenticates each bearer via Auth getUser, then checks the sole owner.
+# This supports both legacy and new signing-key projects; there are no anonymous writes.
