@@ -35,6 +35,28 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("workbench publication and deletion feedback", () => {
+  it("does not claim a new private draft is online when its pre-publication save fails", async () => {
+    await openDraft(published);
+    button("new-draft").click(); await flush();
+    for (const [id, value] of Object.entries({ title: "新的私密笔记", summary: "私密摘要", topic: "AI", body: "尚未公开的新正文" })) {
+      const input = document.getElementById(id) as HTMLInputElement;
+      input.value = value; input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    service.saveDraft.mockRejectedValue(new Error("暂时无法保存"));
+    button("publish-draft").click(); await flush();
+    expect(document.getElementById("publish-status")!.textContent).toContain("未提交发布");
+    expect(document.getElementById("publish-status")!.dataset.state).not.toBe("success");
+    expect(service.publishDraft).not.toHaveBeenCalled();
+  });
+  it("exposes a failed deployment-progress read until a successful response confirms a pending deployment", async () => {
+    service.getPublishStatus.mockRejectedValueOnce(new Error("暂时无法读取部署状态"));
+    await openDraft(published);
+    expect(document.getElementById("publish-status")!.textContent).toContain("正在重试");
+    expect(document.getElementById("publish-status")!.dataset.state).toBe("unknown");
+    service.getPublishStatus.mockResolvedValue({ state: "pending", url: "" });
+    await vi.advanceTimersByTimeAsync(10_000); await flush();
+    expect(document.getElementById("publish-status")!.dataset.state).toBe("pending");
+  });
   it("restores the unsaved-writing warning after a browser-history page restoration", async () => {
     await openDraft();
     const link = document.querySelector(".workbench-brand") as HTMLAnchorElement;
@@ -86,6 +108,7 @@ describe("workbench publication and deletion feedback", () => {
     button("publish-draft").click(); await flush();
     await vi.waitFor(() => expect(document.getElementById("publish-warning")!.textContent).toContain("未变化"));
     expect(service.publishDraft).not.toHaveBeenCalled();
+    expect(document.getElementById("publish-status")!.dataset.state).toBe("success");
   });
   it("keeps publication locked after a polling timeout until a terminal state is checked", async () => {
     service.getPublishStatus.mockResolvedValue({ state: "pending", url: "https://github.com/fixture/actions/runs/1" });

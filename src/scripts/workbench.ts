@@ -2,6 +2,7 @@ import { createWorkbenchApi } from "../lib/workbench-api";
 import { createDraft, publicationFingerprint, type Collection, type Draft } from "../lib/workbench-content";
 import { renderWorkbenchPreview } from "../lib/workbench-preview";
 import { animate } from "motion";
+import { initWorkbenchChrome } from "./workbench-chrome";
 
 const root = document.querySelector<HTMLElement>("[data-workbench]")!;
 const api = createWorkbenchApi({ url: root.dataset.url ?? "", key: root.dataset.key ?? "", username: root.dataset.username ?? "", email: root.dataset.email ?? "" });
@@ -134,6 +135,7 @@ function selectDraft(draft: Draft) {
   updateSlugLock();
   status.textContent = draft.revision > 0 ? "私密云端已保存" : "新草稿，尚未保存";
   element("publish-status").textContent = "";
+  delete element("publish-status").dataset.state;
   const warning = publicationWarnings.get(draft.id);
   element("publish-warning").textContent = warning ?? "";
   element("publish-warning").hidden = !warning;
@@ -142,7 +144,7 @@ function selectDraft(draft: Draft) {
   if (draft.published_commit) {
     element("publish-status").textContent = "草稿有公开版本，正在确认最近一次发布的部署状态…";
     void pollPublication(draft.published_commit, publishGeneration, draft.published_url ?? "");
-  } else if (draft.published_slug) element("publish-status").textContent = "此草稿已开始发布，链接已固定；当前发布状态尚未确认。";
+  } else if (draft.published_slug) { element("publish-status").dataset.state = "unknown"; element("publish-status").textContent = "此草稿已开始发布，链接已固定；当前发布状态尚未确认。"; }
   renderDirectory();
   refreshPreview();
   showView("editor");
@@ -393,6 +395,7 @@ collectionSelect.addEventListener("change", async () => {
   element("deployment-link").hidden = true;
   element("check-publication").hidden = true;
   element("publish-status").textContent = "";
+  delete element("publish-status").dataset.state;
   element("publish-warning").hidden = true;
   element("published-link").hidden = true;
   status.textContent = "选择或新建一篇草稿";
@@ -428,6 +431,7 @@ deleteButton.addEventListener("click", async () => {
     element("editor-empty").hidden = false;
     element("conflict-actions").hidden = true;
     element("publish-status").textContent = "";
+    delete element("publish-status").dataset.state;
     element("publish-warning").hidden = true;
     element("published-link").hidden = true;
     element("deployment-link").hidden = true;
@@ -460,6 +464,7 @@ element<HTMLButtonElement>("reload-draft").addEventListener("click", async () =>
 });
 
 async function pollPublication(commit: string, generation: number, articleUrl: string) {
+  element("publish-status").dataset.state = "pending";
   deploying = true;
   checkingPublication = true;
   element("check-publication").hidden = false;
@@ -478,6 +483,7 @@ async function pollPublication(commit: string, generation: number, articleUrl: s
         link.hidden = false;
       }
       if (result.state === "success") {
+        element("publish-status").dataset.state = "success";
         terminal = true;
         element("publish-status").textContent = "该次发布部署成功，公开版本已上线。";
         if (articleUrl && /^https?:\/\//i.test(articleUrl)) {
@@ -489,14 +495,16 @@ async function pollPublication(commit: string, generation: number, articleUrl: s
         }
         return;
       }
-      if (result.state === "failure") { terminal = true; element("publish-status").textContent = "部署失败，私密草稿已保留。请打开部署记录，修复原因后在 GitHub 重新运行该任务；无需重复提交相同内容。"; return; }
+      if (result.state === "failure") { terminal = true; element("publish-status").dataset.state = "failure"; element("publish-status").textContent = "部署失败，私密草稿已保留。请打开部署记录，修复原因后在 GitHub 重新运行该任务；无需重复提交相同内容。"; return; }
+      element("publish-status").dataset.state = "pending";
       element("publish-status").textContent = "发布提交已创建，网站正在部署。完成后会在这里显示公开页面链接。";
     } catch (error) {
+      element("publish-status").dataset.state = "unknown";
       element("publish-status").textContent = "发布提交已创建，暂时无法读取部署进度，正在重试…";
-      if (attempt === 29) { element("publish-status").textContent = `发布提交已创建，但无法确认部署状态：${message(error)}`; return; }
+      if (attempt === 29) { element("publish-status").dataset.state = "unknown"; element("publish-status").textContent = `发布提交已创建，但无法确认部署状态：${message(error)}`; return; }
     }
   }
-  if (generation === publishGeneration) element("publish-status").textContent = "发布提交已创建，暂时无法确认部署完成。请点击「重新检查进度」或查看部署记录，尚未解除重复发布保护。";
+  if (generation === publishGeneration) { element("publish-status").dataset.state = "unknown"; element("publish-status").textContent = "发布提交已创建，暂时无法确认部署完成。请点击「重新检查进度」或查看部署记录，尚未解除重复发布保护。"; }
   } finally {
     if (generation === publishGeneration) { deploying = !terminal; checkingPublication = false; updateButtons(); }
   }
@@ -516,7 +524,9 @@ publishButton.addEventListener("click", async () => {
   const links = current.metadata.links as { label: string; url: string }[] | undefined;
   if (links?.some(link => !link.label || !/^https?:\/\//i.test(link.url))) { errorBox.textContent = "请检查相关链接，每行填写：名称 | https://地址。"; showView("editor"); return; }
   if (!window.confirm("发布会把这篇正文、填写的信息及引用图片公开到网站和公开仓库。确认这些内容都可以公开？")) return;
+  const previousPublicationState = element("publish-status").dataset.state ?? "";
   publishing = true;
+  element("publish-status").dataset.state = "pending";
   publishGeneration++;
   updateButtons();
   errorBox.textContent = "";
@@ -531,6 +541,7 @@ publishButton.addEventListener("click", async () => {
       ? current.published_fingerprint === await publicationFingerprint(current)
       : current.published_revision === current.revision);
     if (unchanged) {
+      element("publish-status").dataset.state = previousPublicationState;
       element("publish-warning").textContent = "内容未变化，已经提交过这份公开版本，无需重复发布。修改后再更新即可；若部署失败，请在部署记录中重新运行任务。";
       element("publish-warning").hidden = false;
       element("publish-status").textContent = "没有创建重复发布提交，原公开链接保持不变。";
@@ -552,6 +563,7 @@ publishButton.addEventListener("click", async () => {
     void pollPublication(result.commit, ++publishGeneration, result.url);
   } catch (error) {
     errorBox.textContent = message(error);
+    element("publish-status").dataset.state = publishRequested ? "unknown" : previousPublicationState;
     element("publish-status").textContent = publishRequested ? "发布状态未确认，请查看部署记录；私密草稿已保留。" : "未提交发布，请先处理保存错误；私密草稿已保留。";
     if (publishRequested && current) {
       try {
@@ -615,6 +627,7 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
     element("editor-empty").hidden = false;
     element("conflict-actions").hidden = true;
     element("publish-status").textContent = "";
+    delete element("publish-status").dataset.state;
     element("publish-warning").hidden = true;
     element("published-link").hidden = true;
     assetCache.clear();
@@ -644,15 +657,7 @@ document.querySelectorAll<HTMLAnchorElement>("[data-workbench-exit]").forEach(li
   if (await guardChanges()) { leaving = true; window.location.assign(link.href); }
 }));
 
-const controls = document.querySelector<HTMLElement>(".workspace-controls");
-if (controls && typeof ResizeObserver !== "undefined") {
-  new ResizeObserver(() => {
-    const header = document.querySelector(".workbench-header")?.getBoundingClientRect();
-    const height = controls.getBoundingClientRect().height;
-    const offset = getComputedStyle(controls).position === "sticky" ? parseFloat(getComputedStyle(controls).top) + height + 20 : (header?.bottom ?? 76) + 16;
-    root.style.setProperty("--workspace-offset", `${offset}px`);
-  }).observe(controls);
-}
+initWorkbenchChrome(root);
 
 if (api.configured) {
   const loginForm = element<HTMLFormElement>("login-form");

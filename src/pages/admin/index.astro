@@ -38,7 +38,7 @@ const home = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/`;
   <body>
     <LandscapeBackdrop />
     <a class="skip-link" href="#workbench-main">跳到写作区</a>
-    <header class="workbench-header">
+    <header id="workbench-navigation" class="workbench-header">
       <div class="header-pane glass" data-glass-light>
         <a class="workbench-brand" href={home} data-workbench-exit aria-label="返回 Tomphie 首页"><span class="workbench-logo"><TomphieLogo variant="icon" /></span><span>Tomphie</span></a>
         <div class="header-actions"><ModeSwitch active="write" /><ThemeToggle /><button id="sign-out" type="button" hidden>退出</button></div>
@@ -62,16 +62,20 @@ const home = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/`;
         <noscript><p class="notice">请启用 JavaScript 以登录和编辑私密草稿。</p></noscript>
       </section>
       <section id="workspace" hidden aria-label="私人写作工作台">
+        <div class="workspace-controls-slot">
         <div class="workspace-controls glass" data-glass-light>
-        <div class="workspace-bar"><div class="workspace-heading"><h1>私人写作</h1><p id="save-status" role="status" aria-live="polite">选择或新建一篇草稿</p></div><div class="workspace-actions"><button id="delete-draft" class="danger" type="button" disabled>删除草稿</button><button id="save-draft" type="button" disabled>保存草稿</button><button id="publish-draft" class="primary" type="button" disabled>发布到网站</button></div></div>
+        <div class="workspace-bar"><div class="workspace-heading"><h1 tabindex="-1">私人写作</h1><p id="save-status" role="status" aria-live="polite">选择或新建一篇草稿</p><span id="compact-publication" role="status" aria-live="polite" hidden></span></div><div class="workspace-actions"><button id="delete-draft" class="danger" type="button" disabled>删除草稿</button><button id="save-draft" type="button" disabled>保存草稿</button><button id="publish-draft" class="primary" type="button" disabled>发布到网站</button><button id="workbench-more" type="button" aria-expanded="false" aria-controls="workspace-details workbench-navigation" hidden>更多</button></div></div>
         <p id="workbench-error" class="error" role="alert"></p>
         <div id="conflict-actions" class="notice" hidden><p>其他设备已更新此草稿，当前文字仍保留在编辑区。请先复制或下载当前正文，再决定是否重新载入云端版本。</p><button id="download-draft" type="button">下载当前草稿</button><button id="reload-draft" type="button">重新载入云端版本</button></div>
+        <div id="workspace-details">
         <p id="publish-status" role="status" aria-live="polite"></p>
         <p id="publish-warning" class="notice" role="status" hidden></p>
         <div class="publication-actions">
         <a id="published-link" target="_blank" rel="noopener noreferrer" hidden>查看公开页面</a>
         <a id="deployment-link" target="_blank" rel="noopener noreferrer" hidden>查看部署记录</a>
         <button id="check-publication" type="button" hidden>重新检查进度</button>
+        </div>
+        </div>
         </div>
         </div>
         <div class="mobile-tabs glass" data-glass-light aria-label="工作区视图"><button type="button" data-view="directory" aria-pressed="false">草稿目录</button><button type="button" data-view="editor" aria-pressed="true">编辑</button><button type="button" data-view="preview" aria-pressed="false">预览</button></div>

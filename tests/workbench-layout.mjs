@@ -16,7 +16,7 @@ async function settleView(page, selector) {
 }
 
 async function workbench(width, options = {}) {
-  const page = await browser.newPage({ viewport: { width, height: 960 }, colorScheme: options.theme ?? 'light', reducedMotion: options.reduced ? 'reduce' : 'no-preference', ...(options.userAgent ? { userAgent: options.userAgent } : {}) });
+  const page = await browser.newPage({ viewport: { width, height: options.height ?? 960 }, colorScheme: options.theme ?? 'light', reducedMotion: options.reduced ? 'reduce' : 'no-preference', ...(options.userAgent ? { userAgent: options.userAgent } : {}) });
   // Exercise the WebKit renderer in Chromium; this is not an iPhone hardware test.
   if (options.userAgent) await page.addInitScript(() => Object.defineProperty(navigator, 'userAgentData', { value: undefined }));
   const owner = '11111111-1111-4111-8111-111111111111';
@@ -38,7 +38,7 @@ async function workbench(width, options = {}) {
       if (options.failSave) { status = 503; data = { message: '暂时无法保存', code: 'unavailable' }; }
       else { draft = { ...draft, body: body.draft_body, metadata: body.draft_metadata, revision: draft.revision + 1 }; saves++; data = draft; }
     } else if (path === '/auth/v1/logout') data = {};
-    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'status') data = { state: 'success', url: 'https://github.com/fixture/actions/runs/1' };
+    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'status') data = { state: options.publicationState ?? 'success', url: 'https://github.com/fixture/actions/runs/1' };
     else { await route.abort(); return; }
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
   });
@@ -163,4 +163,126 @@ test('the iPhone compatibility path shares one landscape without scenery copies 
   await page.evaluate(() => scrollBy(0, 220));
   assert.equal(await page.locator('.landscape-glass-canvas').count(), 1);
   await page.close();
+});
+
+test('scrolling into a published article leaves one compact toolbar without moving the writing', async () => {
+  const { page } = await workbench(1440, { published: true });
+  await page.locator('#published-link').waitFor({ state: 'visible' });
+  await page.evaluate(() => { document.activeElement.blur(); scrollTo(0, 0); });
+  const original = await page.locator('#body').evaluate(e => e.getBoundingClientRect().top + scrollY);
+  await page.evaluate(() => scrollTo(0, 620));
+  await settleView(page, '.workspace-controls');
+  const geometry = await page.evaluate(() => {
+    const toolbar = document.querySelector('.workspace-controls').getBoundingClientRect();
+    return { height: toolbar.height, top: toolbar.top, bottom: toolbar.bottom, body: document.querySelector('#body').getBoundingClientRect().top + scrollY };
+  });
+  assert(geometry.height <= 60 && geometry.bottom <= 80, `the floating UI still blocks writing: ${JSON.stringify(geometry)}`);
+  assert(Math.abs(geometry.body - original) <= 1, 'collapsing must not change the article position');
+  assert.equal(await page.locator('.workbench-header').isVisible(), false);
+  assert.equal(await page.locator('#save-draft').isVisible(), true);
+  assert.equal(await page.locator('#publish-draft').isVisible(), true);
+  assert.equal(await page.locator('#delete-draft').isVisible(), false);
+  assert.equal(await page.locator('#published-link').isVisible(), false);
+  await page.locator('#workbench-more').click();
+  assert.equal(await page.locator('#workbench-more').getAttribute('aria-expanded'), 'true');
+  assert.equal(await page.locator('#published-link').isVisible(), true);
+  assert.equal(await page.getByRole('link', { name: '浏览网站', exact: true }).isVisible(), true);
+  await page.locator('#deployment-link').focus();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#workbench-more').getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.locator('#workbench-more').evaluate(e => e === document.activeElement), true);
+  assert.equal(await page.locator('#published-link').isVisible(), false);
+  await page.evaluate(() => scrollTo(0, 0));
+  await settleView(page, '.workspace-controls');
+  assert.equal(await page.locator('.workbench-header').isVisible(), true);
+  assert.equal(await page.locator('#published-link').isVisible(), true);
+  if (process.env.TOMPHIE_SCREENSHOT_DIR) {
+    await page.evaluate(() => scrollTo(0, 620)); await settleView(page, '.workspace-controls');
+    await page.screenshot({ path: `${process.env.TOMPHIE_SCREENSHOT_DIR}/workbench-1440-compact.png` });
+  }
+  await page.close();
+});
+
+test('phone focus mode keeps saving within one touch-sized row and preserves reduced motion', async () => {
+  for (const width of [320, 390]) {
+    const { page } = await workbench(width, { published: true, reduced: true, theme: 'dark' });
+    await page.locator('#published-link').waitFor({ state: 'visible' });
+    await page.evaluate(() => { document.activeElement.blur(); scrollTo(0, 620); });
+    await settleView(page, '.workspace-controls');
+    const layout = await page.evaluate(() => {
+      const bar = document.querySelector('.workspace-controls'); const rect = bar.getBoundingClientRect();
+      const buttons = ['#save-draft', '#publish-draft', '#workbench-more'].map(s => document.querySelector(s).getBoundingClientRect());
+      return { height: rect.height, bottom: rect.bottom, overflow: document.documentElement.scrollWidth - innerWidth, buttons: buttons.map(b => ({ height: b.height, top: b.top, right: b.right })), animations: bar.getAnimations().length };
+    });
+    assert(layout.height <= 60 && layout.bottom <= 80, `${width}px ${JSON.stringify(layout)}`);
+    assert(layout.overflow <= 1 && layout.buttons.every(b => b.height >= 44 && b.right <= width));
+    assert(Math.max(...layout.buttons.map(b => b.top)) - Math.min(...layout.buttons.map(b => b.top)) <= 1);
+    assert.equal(layout.animations, 0);
+    await page.locator('#workbench-more').click();
+    assert.equal(await page.getByRole('link', { name: '浏览网站', exact: true }).isVisible(), true);
+    assert.equal(await page.locator('#delete-draft').isVisible(), true);
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.locator('#workbench-more').click();
+    if (process.env.TOMPHIE_SCREENSHOT_DIR && width === 390) await page.screenshot({ path: `${process.env.TOMPHIE_SCREENSHOT_DIR}/workbench-390-compact.png` });
+    await page.close();
+  }
+});
+
+test('compacting never hides failed deployment instructions or unsaved-writing errors', async () => {
+  const { page } = await workbench(1440, { published: true, publicationState: 'failure', failSave: true });
+  await page.waitForFunction(() => document.querySelector('#publish-status').textContent.includes('部署失败'));
+  await page.evaluate(() => { document.activeElement.blur(); scrollTo(0, 620); });
+  await settleView(page, '.workspace-controls');
+  assert.equal(await page.locator('.workbench-header').isVisible(), false);
+  assert.equal(await page.locator('#publish-status').isVisible(), true);
+  assert.equal(await page.locator('#deployment-link').isVisible(), true);
+  await page.locator('#body').fill('保存失败时不能丢失的正文');
+  await page.locator('#save-draft').click();
+  await page.locator('#workbench-error').filter({ hasText: '暂时无法保存' }).waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#workbench-error').isVisible(), true);
+  assert.equal(await page.locator('#body').inputValue(), '保存失败时不能丢失的正文');
+  await page.close();
+});
+
+test('scrolling after a pointer click still compacts, while keyboard navigation retains its focused control', async () => {
+  const { page } = await workbench(1440, { published: true });
+  await page.locator('#published-link').waitFor({ state: 'visible' });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.locator('[data-theme-toggle]').click();
+  await page.evaluate(() => scrollTo(0, 620));
+  await settleView(page, '.workspace-controls');
+  assert.equal(await page.locator('.workbench-header').isVisible(), false, 'a previously clicked navigation control must not keep both large bars pinned');
+  assert.equal(await page.locator('#workbench-more').evaluate(e => e === document.activeElement), true);
+  await page.evaluate(() => scrollTo(0, 0));
+  await settleView(page, '.workspace-controls');
+  await page.locator('.workbench-brand').focus();
+  await page.keyboard.press('Tab');
+  await page.evaluate(() => scrollTo(0, 620));
+  await settleView(page, '.workspace-controls');
+  assert.equal(await page.getByRole('link', { name: '浏览网站', exact: true }).evaluate(e => e === document.activeElement), true);
+  assert.equal(await page.locator('.workbench-header').isVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#workbench-more').evaluate(e => e === document.activeElement), true);
+  assert.equal(await page.locator('.workbench-header').isVisible(), false);
+  await page.close();
+});
+
+test('long conflict feedback remains reachable in a short phone or desktop viewport', async () => {
+  for (const width of [390, 1440]) {
+    const { page } = await workbench(width, { published: true, publicationState: 'failure', height: 480 });
+    await page.waitForFunction(() => document.querySelector('#publish-status').textContent.includes('部署失败'));
+    await page.evaluate(() => { document.activeElement.blur(); scrollTo(0, 620); });
+    await settleView(page, '.workspace-controls');
+    await page.evaluate(() => {
+      document.querySelector('#workbench-error').textContent = Array(12).fill('其他设备已更新，当前修改仍保留，请先备份').join('\n');
+      document.querySelector('#conflict-actions').hidden = false;
+    });
+    await settleView(page, '.workspace-controls');
+    const panel = await page.locator('.workspace-controls').evaluate(e => ({ bottom: e.getBoundingClientRect().bottom, overflow: getComputedStyle(e).overflowY, scrolls: e.scrollHeight > e.clientHeight }));
+    assert(panel.bottom <= 480 && panel.overflow === 'auto' && panel.scrolls, `${width}px ${JSON.stringify(panel)}`);
+    await page.locator('#reload-draft').evaluate(e => e.scrollIntoView({ block: 'nearest' }));
+    const button = await page.locator('#reload-draft').boundingBox();
+    assert(button.y >= 0 && button.y + button.height <= 480, 'conflict recovery action must stay within reach');
+    await page.close();
+  }
 });
