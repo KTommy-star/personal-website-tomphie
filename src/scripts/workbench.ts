@@ -1,5 +1,5 @@
 import { createWorkbenchApi } from "../lib/workbench-api";
-import { createDraft, type Collection, type Draft } from "../lib/workbench-content";
+import { createDraft, publicationFingerprint, type Collection, type Draft } from "../lib/workbench-content";
 import { renderWorkbenchPreview } from "../lib/workbench-preview";
 
 const root = document.querySelector<HTMLElement>("[data-workbench]")!;
@@ -12,6 +12,8 @@ const errorBox = element("workbench-error");
 const status = element("save-status");
 const saveButton = element<HTMLButtonElement>("save-draft");
 const publishButton = element<HTMLButtonElement>("publish-draft");
+const deleteButton = element<HTMLButtonElement>("delete-draft");
+const draftFilter = element<HTMLSelectElement>("draft-filter");
 let collection: Collection = "notes";
 let drafts: Draft[] = [];
 let current: Draft | null = null;
@@ -23,6 +25,9 @@ let saving: Promise<void> | undefined;
 let conflict = false;
 let uploading = false;
 let publishing = false;
+let deploying = false;
+let checkingPublication = false;
+let deleting = false;
 let loading = false;
 let navigating = false;
 let previewGeneration = 0;
@@ -35,14 +40,21 @@ function message(error: unknown) {
 }
 
 function updateButtons() {
-  saveButton.disabled = !current || conflict || uploading || publishing || navigating;
-  publishButton.disabled = !current || conflict || uploading || publishing || loading || navigating;
-  element<HTMLButtonElement>("new-draft").disabled = uploading || publishing || loading || navigating;
-  collectionSelect.disabled = uploading || publishing || loading || navigating;
-  element<HTMLButtonElement>("sign-out").disabled = uploading || publishing || navigating || loading;
-  element<HTMLButtonElement>("reload-draft").disabled = uploading || publishing || navigating || loading;
-  form.inert = publishing || (loading && conflict);
-  document.querySelectorAll<HTMLButtonElement>(".draft-item").forEach(button => { button.disabled = uploading || publishing || loading || navigating; });
+  const busy = uploading || publishing || deleting || loading || navigating;
+  saveButton.disabled = !current || conflict || busy;
+  publishButton.disabled = !current || conflict || busy || deploying;
+  publishButton.textContent = publishing ? "正在提交…" : deploying ? "部署中…" : current?.published_commit ? "更新已发布文章" : "发布到网站";
+  publishButton.setAttribute("aria-busy", String(publishing || deploying));
+  deleteButton.disabled = !current || busy || deploying;
+  deleteButton.textContent = deleting ? "正在删除…" : "删除草稿";
+  element<HTMLButtonElement>("check-publication").disabled = busy || checkingPublication;
+  element<HTMLButtonElement>("new-draft").disabled = busy;
+  collectionSelect.disabled = busy;
+  draftFilter.disabled = busy;
+  element<HTMLButtonElement>("sign-out").disabled = busy;
+  element<HTMLButtonElement>("reload-draft").disabled = busy;
+  form.inert = publishing || deleting || (loading && conflict);
+  document.querySelectorAll<HTMLButtonElement>(".draft-item").forEach(button => { button.disabled = busy; });
 }
 
 function updateSlugLock() {
@@ -53,15 +65,16 @@ function updateSlugLock() {
 
 function mergePublicationFields(result: Draft) {
   if (!current || current.id !== result.id) return;
-  current = { ...current, published_commit: result.published_commit, published_url: result.published_url, published_slug: result.published_slug, published_collection: result.published_collection, published_at: result.published_at, published_revision: result.published_revision };
+  current = { ...current, published_commit: result.published_commit, published_url: result.published_url, published_slug: result.published_slug, published_collection: result.published_collection, published_at: result.published_at, published_revision: result.published_revision, published_fingerprint: result.published_fingerprint };
   updateSlugLock();
 }
 
 function renderDirectory() {
   const list = element("draft-list");
   list.replaceChildren();
-  element("directory-state").textContent = drafts.length ? `${drafts.length} 篇私密草稿` : "还没有草稿。新建一篇开始写作。";
-  for (const draft of drafts) {
+  const visible = drafts.filter(draft => draftFilter.value === "all" || (draftFilter.value === "published" ? Boolean(draft.published_commit) : !draft.published_commit));
+  element("directory-state").textContent = drafts.length ? `显示 ${visible.length} / ${drafts.length} 篇文章` : "还没有草稿。新建一篇开始写作。";
+  for (const draft of visible) {
     const li = document.createElement("li");
     const button = document.createElement("button");
     button.type = "button";
@@ -70,10 +83,10 @@ function renderDirectory() {
     const title = document.createElement("span");
     title.textContent = String(draft.metadata.title || "未命名草稿");
     const detail = document.createElement("small");
-    detail.textContent = draft.published_commit ? "曾发布 · 私密草稿" : draft.published_slug ? "链接已固定 · 私密草稿" : "私密草稿";
+    detail.textContent = draft.published_commit ? "已提交发布 · 点击继续编辑" : draft.published_slug ? "链接已固定 · 私密草稿" : "私密草稿";
     button.append(title, detail);
     button.addEventListener("click", async () => {
-      if (current?.id === draft.id || loading || uploading || publishing) return;
+      if (current?.id === draft.id || loading || uploading || publishing || deleting) return;
       if (await guardChanges()) selectDraft(draft);
     });
     li.append(button);
@@ -84,6 +97,10 @@ function renderDirectory() {
 
 function selectDraft(draft: Draft) {
   clearTimeout(saveTimer);
+  deploying = false;
+  checkingPublication = false;
+  element("deployment-link").hidden = true;
+  element("check-publication").hidden = true;
   current = structuredClone(draft);
   edited = saved = 0;
   conflict = false;
@@ -134,7 +151,7 @@ function readForm() {
   if (!current) return;
   const metadata = { ...current.metadata };
   for (const input of Array.from(form.elements)) {
-    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement) || input.disabled || !input.name || input.name === "body" || input.name === "slug") continue;
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement) || input.matches(":disabled") || !input.name || input.name === "body" || input.name === "slug") continue;
     const value = input.value.trim();
     if (["tags", "authors", "related"].includes(input.name)) metadata[input.name] = value.split(/[,，]/).map(item => item.trim()).filter(Boolean);
     else if (input.name === "links") metadata.links = value ? value.split("\n").filter(line => line.trim()).map(line => {
@@ -193,7 +210,7 @@ async function saveChanges() {
 }
 
 async function guardChanges() {
-  if (uploading || publishing || navigating || loading) return false;
+  if (uploading || publishing || deleting || navigating || loading) return false;
   navigating = true;
   updateButtons();
   try {
@@ -289,7 +306,7 @@ let imageTarget: "body" | "cover" = "body";
 let imageSelection = { start: 0, end: 0 };
 let bodyBeforeUpload = "";
 function chooseImage(target: "body" | "cover") {
-  if (!current || uploading || publishing) return;
+  if (!current || uploading || publishing || deleting) return;
   imageTarget = target;
   imageSelection = { start: body.selectionStart, end: body.selectionEnd };
   bodyBeforeUpload = body.value;
@@ -300,7 +317,7 @@ element<HTMLInputElement>("image-file").addEventListener("change", async event =
   const input = event.currentTarget as HTMLInputElement;
   const file = input.files?.[0];
   input.value = "";
-  if (!file || !current) return;
+  if (!file || !current || deleting || publishing) return;
   const id = current.id;
   const target = imageTarget;
   const selection = imageSelection;
@@ -361,12 +378,57 @@ collectionSelect.addEventListener("change", async () => {
   element("preview").replaceChildren();
   previewGeneration++;
   publishGeneration++;
+  deploying = false;
+  checkingPublication = false;
+  element("deployment-link").hidden = true;
+  element("check-publication").hidden = true;
   element("publish-status").textContent = "";
   element("publish-warning").hidden = true;
   element("published-link").hidden = true;
   status.textContent = "选择或新建一篇草稿";
   errorBox.textContent = "";
   await loadDirectory();
+});
+draftFilter.addEventListener("change", renderDirectory);
+
+deleteButton.addEventListener("click", async () => {
+  if (!current || deleting || publishing || deploying || uploading || loading || navigating) return;
+  const published = Boolean(current.published_commit || current.published_slug);
+  const warning = published ? "已经公开的文章和图片不会被撤下；删除这份私密草稿后，将无法再从工作台编辑该文章。" : "这份私密草稿将永久删除，尚未保存的修改也会丢失。";
+  if (!window.confirm(`删除「${String(current.metadata.title || "未命名草稿")}」？\n${warning}\n此操作不可撤销。`)) return;
+  deleting = true;
+  clearTimeout(saveTimer);
+  updateButtons();
+  errorBox.textContent = "";
+  status.textContent = "正在删除私密草稿…";
+  try {
+    if (saving) await saving;
+    const snapshot = structuredClone(current);
+    if (snapshot.revision > 0) await api.deleteDraft(snapshot);
+    drafts = drafts.filter(draft => draft.id !== snapshot.id);
+    publicationWarnings.delete(snapshot.id);
+    current = null;
+    edited = saved = 0;
+    conflict = false;
+    publishGeneration++;
+    previewGeneration++;
+    clearTimeout(previewTimer);
+    form.reset();
+    form.hidden = true;
+    element("editor-empty").hidden = false;
+    element("conflict-actions").hidden = true;
+    element("publish-status").textContent = "";
+    element("publish-warning").hidden = true;
+    element("published-link").hidden = true;
+    element("deployment-link").hidden = true;
+    element("check-publication").hidden = true;
+    element("preview").replaceChildren();
+    status.textContent = published ? "私密草稿已删除，公开文章仍保留" : "私密草稿已删除";
+    renderDirectory();
+  } catch (error) {
+    errorBox.textContent = message(error);
+    status.textContent = "删除未完成，草稿仍保留";
+  } finally { deleting = false; updateButtons(); }
 });
 
 element<HTMLButtonElement>("download-draft").addEventListener("click", () => {
@@ -380,7 +442,7 @@ element<HTMLButtonElement>("download-draft").addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 element<HTMLButtonElement>("reload-draft").addEventListener("click", async () => {
-  if (!current || loading || navigating || uploading || publishing || !window.confirm("重新载入会替换编辑区的当前修改。确认已经保留需要的文字？")) return;
+  if (!current || loading || navigating || uploading || publishing || deleting || !window.confirm("重新载入会替换编辑区的当前修改。确认已经保留需要的文字？")) return;
   const id = current.id;
   await loadDirectory();
   const latest = drafts.find(draft => draft.id === id);
@@ -388,31 +450,55 @@ element<HTMLButtonElement>("reload-draft").addEventListener("click", async () =>
 });
 
 async function pollPublication(commit: string, generation: number, articleUrl: string) {
+  deploying = true;
+  checkingPublication = true;
+  element("check-publication").hidden = false;
+  let terminal = false;
+  updateButtons();
+  try {
   for (let attempt = 0; attempt < 30; attempt++) {
-    await new Promise(resolve => setTimeout(resolve, 10_000));
+    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 10_000));
     if (generation !== publishGeneration) return;
     try {
       const result = await api.getPublishStatus(commit);
       if (generation !== publishGeneration) return;
+      if (/^https?:\/\//i.test(result.url)) {
+        const link = element<HTMLAnchorElement>("deployment-link");
+        link.href = result.url;
+        link.hidden = false;
+      }
       if (result.state === "success") {
+        terminal = true;
         element("publish-status").textContent = "该次发布部署成功，公开版本已上线。";
         if (articleUrl && /^https?:\/\//i.test(articleUrl)) {
           const link = element<HTMLAnchorElement>("published-link");
-          link.href = articleUrl;
+          const freshUrl = new URL(articleUrl);
+          freshUrl.searchParams.set("published", commit.slice(0, 12));
+          link.href = freshUrl.href;
           link.hidden = false;
         }
         return;
       }
-      if (result.state === "failure") { element("publish-status").textContent = "部署失败，私密草稿已保留。请检查部署后重试。"; return; }
+      if (result.state === "failure") { terminal = true; element("publish-status").textContent = "部署失败，私密草稿已保留。请打开部署记录，修复原因后在 GitHub 重新运行该任务；无需重复提交相同内容。"; return; }
+      element("publish-status").textContent = "发布提交已创建，网站正在部署。完成后会在这里显示公开页面链接。";
     } catch (error) {
+      element("publish-status").textContent = "发布提交已创建，暂时无法读取部署进度，正在重试…";
       if (attempt === 29) { element("publish-status").textContent = `发布提交已创建，但无法确认部署状态：${message(error)}`; return; }
     }
   }
-  if (generation === publishGeneration) element("publish-status").textContent = "发布提交已创建，部署仍在等待中。暂时无法确认上线，请稍后检查公开网站。";
+  if (generation === publishGeneration) element("publish-status").textContent = "发布提交已创建，暂时无法确认部署完成。请点击「重新检查进度」或查看部署记录，尚未解除重复发布保护。";
+  } finally {
+    if (generation === publishGeneration) { deploying = !terminal; checkingPublication = false; updateButtons(); }
+  }
 }
+element<HTMLButtonElement>("check-publication").addEventListener("click", () => {
+  if (!current?.published_commit || checkingPublication || publishing || deleting || loading || navigating) return;
+  element("publish-status").textContent = "正在重新确认部署进度…";
+  void pollPublication(current.published_commit, ++publishGeneration, current.published_url ?? "");
+});
 
 publishButton.addEventListener("click", async () => {
-  if (!current || publishing || conflict || uploading) return;
+  if (!current || publishing || deploying || deleting || conflict || uploading || loading || navigating) return;
   readForm();
   showView("editor");
   element<HTMLDetailsElement>("collection-details").open = true;
@@ -425,20 +511,30 @@ publishButton.addEventListener("click", async () => {
   updateButtons();
   errorBox.textContent = "";
   element("publish-warning").hidden = true;
+  element("publish-status").textContent = "正在保存草稿并提交发布…";
   let publishRequested = false;
   const previousCommit = current.published_commit;
   try {
     await saveChanges();
     if (edited !== saved || conflict) throw new Error("草稿尚未保存成功，未提交发布。请先处理保存错误。");
+    const unchanged = current.published_commit && (current.published_fingerprint
+      ? current.published_fingerprint === await publicationFingerprint(current)
+      : current.published_revision === current.revision);
+    if (unchanged) {
+      element("publish-warning").textContent = "内容未变化，已经提交过这份公开版本，无需重复发布。修改后再更新即可；若部署失败，请在部署记录中重新运行任务。";
+      element("publish-warning").hidden = false;
+      element("publish-status").textContent = "没有创建重复发布提交，原公开链接保持不变。";
+      return;
+    }
     element("publish-status").textContent = "正在提交发布…";
     publishRequested = true;
     const result = await api.publishDraft(structuredClone(current));
     if (result.warning) publicationWarnings.set(current.id, result.warning); else publicationWarnings.delete(current.id);
-    element("publish-warning").textContent = result.warning ?? "";
-    element("publish-warning").hidden = !result.warning;
-    current = { ...current, published_commit: result.commit, published_url: result.url, published_slug: current.slug, published_collection: current.collection };
+    element("publish-warning").textContent = result.warning ?? (result.duplicate ? "内容未变化，沿用已有发布，没有创建重复文章。" : "");
+    element("publish-warning").hidden = !result.warning && !result.duplicate;
+    current = { ...current, published_commit: result.commit, published_url: result.url, published_slug: current.slug, published_collection: current.collection, published_revision: current.revision, published_fingerprint: result.fingerprint };
     const listed = drafts.find(draft => draft.id === current?.id);
-    if (listed) { listed.published_commit = result.commit; listed.published_url = result.url; listed.published_slug = current.slug; listed.published_collection = current.collection; }
+    if (listed) { listed.published_commit = result.commit; listed.published_url = result.url; listed.published_slug = current.slug; listed.published_collection = current.collection; listed.published_revision = current.revision; listed.published_fingerprint = result.fingerprint; }
     updateSlugLock();
     element("publish-status").textContent = "发布提交已创建，等待网站部署。尚未确认上线。";
     element("published-link").hidden = true;
@@ -456,7 +552,7 @@ publishButton.addEventListener("click", async () => {
           // revision intact so a peer's newer revision still causes a conflict.
           mergePublicationFields(latest);
           const index = drafts.findIndex(draft => draft.id === latest.id);
-          if (index >= 0) drafts[index] = { ...drafts[index], published_commit: latest.published_commit, published_url: latest.published_url, published_slug: latest.published_slug, published_collection: latest.published_collection, published_at: latest.published_at, published_revision: latest.published_revision };
+          if (index >= 0) drafts[index] = { ...drafts[index], published_commit: latest.published_commit, published_url: latest.published_url, published_slug: latest.published_slug, published_collection: latest.published_collection, published_at: latest.published_at, published_revision: latest.published_revision, published_fingerprint: latest.published_fingerprint };
           renderDirectory();
           if (latest.published_commit && latest.published_commit !== previousCommit) void pollPublication(latest.published_commit, ++publishGeneration, latest.published_url ?? "");
         }
@@ -500,6 +596,10 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
     drafts = [];
     saved = edited = 0;
     conflict = false;
+    deploying = false;
+    checkingPublication = false;
+    element("deployment-link").hidden = true;
+    element("check-publication").hidden = true;
     errorBox.textContent = "";
     status.textContent = "选择或新建一篇草稿";
     element("editor-empty").hidden = false;
@@ -524,7 +624,7 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
   } catch (error) { errorBox.textContent = message(error); }
 });
 window.addEventListener("beforeunload", event => {
-  if (edited !== saved || uploading || publishing) event.preventDefault();
+  if (edited !== saved || uploading || publishing || deleting) event.preventDefault();
 });
 
 if (api.configured) {

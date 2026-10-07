@@ -7,6 +7,22 @@ const config = { url: "https://fixture.supabase.co", key: "public-fixture", user
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); sessionStorage.clear(); });
 
 describe("workbench provider contract", () => {
+  it("deletes only the selected draft at its known revision through the owner RPC", async () => {
+    const draft = { ...createDraft("notes"), revision: 4 };
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal("fetch", async (input: unknown, init: RequestInit) => {
+      calls.push({ url: String(input), body: JSON.parse(String(init.body)) });
+      return new Response(null, { status: 204 });
+    });
+    await createWorkbenchApi(config).deleteDraft(draft);
+    expect(calls).toEqual([{ url: "https://fixture.supabase.co/rest/v1/rpc/delete_workbench_draft", body: { draft_id: draft.id, expected_revision: 4 } }]);
+  });
+  it("preserves a draft when a newer device revision prevents deletion", async () => {
+    const draft = { ...createDraft("notes"), body: "保留我的内容", revision: 4 };
+    vi.stubGlobal("fetch", async () => Response.json({ code: "40001", message: "版本冲突", hint: null, details: null }, { status: 409 }));
+    await expect(createWorkbenchApi(config).deleteDraft(draft)).rejects.toThrow("其他设备");
+    expect(draft.body).toBe("保留我的内容");
+  });
   it("requests a single returned database row, not a relation array", async () => {
     const draft = { ...createDraft("notes"), revision: 1 };
     vi.stubGlobal("fetch", async (_input: unknown, init: RequestInit) => {

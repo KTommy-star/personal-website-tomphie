@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { JSDOM } from "jsdom";
 
 const pages = [
   ["index.html", "Tomphie"],
@@ -123,12 +124,16 @@ describe("static routes", () => {
     expect(robots).toContain("User-agent: *");
     expect(robots).toContain("Allow: /");
   });
-  it("builds an unconfigured, private-by-default standalone workbench", async () => {
+  it("builds a private-by-default standalone workbench with correct configuration visibility", async () => {
     const html = await readFile(new URL("../dist/admin/index.html", import.meta.url), "utf8");
     expect(html).toContain("私人写作工作台");
     expect(html).toContain('content="noindex,nofollow,noarchive"');
     expect(html).toContain('id="workspace" hidden');
-    expect(html).toContain("尚未连接私密云端");
+    const document = new JSDOM(html).window.document;
+    const config = document.querySelector<HTMLElement>("[data-workbench]")!.dataset;
+    const configured = Boolean(config.url && config.key && config.email && config.username);
+    expect(document.querySelector<HTMLElement>("#configuration-notice")!.hidden).toBe(configured);
+    expect(document.querySelector<HTMLElement>("#login-form")!.hidden).toBe(!configured);
     expect(html).not.toContain("data-glass");
     expect(html).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(html).not.toContain("GITHUB_TOKEN");
@@ -137,7 +142,11 @@ describe("static routes", () => {
     const homeScripts = scripts(home);
     const editorScripts = scripts(html).filter(src => !homeScripts.includes(src));
     expect(editorScripts.length).toBeGreaterThan(0);
-    const bundle = (src: string) => readFile(new URL(`../dist/${src.replace(/^\//, "")}`, import.meta.url), "utf8");
+    const bundle = (src: string) => {
+      const path = new URL(src, "https://example.test").pathname;
+      const asset = path.slice(path.indexOf("/_astro/") + 1);
+      return readFile(new URL(`../dist/${asset}`, import.meta.url), "utf8");
+    };
     expect((await Promise.all(editorScripts.map(bundle))).join("\n")).toContain("tomphie-workbench-session");
     expect((await Promise.all(homeScripts.map(bundle))).join("\n")).not.toContain("tomphie-workbench-session");
   });

@@ -13,7 +13,7 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
     "test": "npm run test:unit",
-    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/theme.test.ts tests/journey-content.test.ts tests/public-content.test.ts tests/public-markdown.test.ts tests/workbench-content.test.ts tests/workbench-api.test.ts tests/workbench-publisher.test.ts tests/workbench-preview.test.ts",
+    "test:unit": "vitest run tests/paths.test.ts tests/navigation.test.ts tests/deployment.test.ts tests/route-progress.test.ts tests/theme.test.ts tests/journey-content.test.ts tests/public-content.test.ts tests/content-library.test.ts tests/public-markdown.test.ts tests/workbench-content.test.ts tests/workbench-api.test.ts tests/workbench-publisher.test.ts tests/workbench-preview.test.ts tests/workbench-ui.test.ts",
     "test:browser": "node --test tests/browser-experience.mjs",
     "test:dist": "vitest run tests/build-output.test.ts",
     "test:watch": "vitest",

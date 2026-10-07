@@ -72,6 +72,10 @@ export function createWorkbenchApi(config: Config) {
       if (result.error) throw new Error(result.error.code === "40001" ? "版本冲突：另一台设备已修改，本机内容已保留，请先导出或复制后重新载入" : result.error.code === "23505" ? "该链接已存在，请换一个链接标识" : result.error.message);
       return result.data as Draft;
     },
+    async deleteDraft(draft: Draft): Promise<void> {
+      const result = await connection().rpc("delete_workbench_draft", { draft_id: draft.id, expected_revision: draft.revision });
+      if (result.error) throw new Error(result.error.code === "40001" ? "其他设备已更新这篇草稿，未删除。请重新载入后再确认。" : result.error.code === "PGRST202" ? "删除权限尚未启用，请先执行工作台升级 SQL。" : "草稿删除失败，内容仍保留。请检查连接与管理员权限。");
+    },
     async uploadImage(draftId: string, file: Blob) {
       if (!ownerId) await verifyOwner();
       const suffix = file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "";
@@ -87,7 +91,7 @@ export function createWorkbenchApi(config: Config) {
       if (error || !data) throw new Error("私密图片预览暂时不可用");
       return data.signedUrl;
     },
-    async publishDraft(draft: Draft): Promise<{ commit: string; url: string; warning?: string }> {
+    async publishDraft(draft: Draft): Promise<{ commit: string; url: string; warning?: string; duplicate?: boolean; fingerprint?: string }> {
       return invoke({ action: "publish", draftId: draft.id, revision: draft.revision });
     },
     async getPublishStatus(commit: string): Promise<{ state: "pending" | "success" | "failure"; url: string }> {

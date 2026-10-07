@@ -1,4 +1,4 @@
-import { collectAssets, serializePublication, uuidPattern, validatePublication, type Draft } from "./content.ts";
+import { collectAssets, serializePublication, uuidPattern, validatePublication, publicationFingerprint, type Draft } from "./content.ts";
 
 export interface PublishEnv {
   SUPABASE_URL: string;
@@ -74,6 +74,11 @@ export async function handlePublishRequest(request: Request, env: PublishEnv, fe
     let metadata: Record<string, unknown>;
     try { metadata = validatePublication(draft); }
     catch (error) { throw new RequestError(error instanceof Error ? error.message : "请检查文章内容"); }
+    const fingerprint = await publicationFingerprint(draft);
+    if (draft.published_commit && (draft.published_fingerprint === fingerprint || (!draft.published_fingerprint && draft.published_revision === draft.revision))) {
+      const url = new URL(`${draft.collection}/${draft.published_slug ?? draft.slug}/`, publicSite).href;
+      return reply({ commit: draft.published_commit, url, duplicate: true, fingerprint });
+    }
     const assets = collectAssets(draft);
     if (assets.length > 20 || assets.some(path => !path.startsWith(`${user.id}/${draft.id}/`))) throw new RequestError("发布只允许本篇文章上传的图片，最多 20 张");
     // Validate/download every approved asset before creating any public Git blob.
@@ -111,10 +116,10 @@ export async function handlePublishRequest(request: Request, env: PublishEnv, fe
     // Only this authenticated publication handler uses the service key.
     let recorded = false;
     try {
-      const record = await fetcher(endpoint, { method: "PATCH", headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ published_commit: commit.sha, published_url: url, published_slug: draft.slug, published_collection: draft.collection, published_revision: draft.revision, published_at: draft.published_at ?? metadata.publishedAt ?? timestamp }), signal: AbortSignal.timeout(15_000) });
+      const record = await fetcher(endpoint, { method: "PATCH", headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ published_commit: commit.sha, published_url: url, published_slug: draft.slug, published_collection: draft.collection, published_revision: draft.revision, published_fingerprint: fingerprint, published_at: draft.published_at ?? metadata.publishedAt ?? timestamp }), signal: AbortSignal.timeout(15_000) });
       recorded = record.ok;
     } catch { /* The public commit already exists; do not report this as an unpublished draft. */ }
-    return reply({ commit: commit.sha, url, ...(!recorded ? { warning: "已提交发布，但私密状态记录暂未更新；请勿重复点击发布" } : {}) });
+    return reply({ commit: commit.sha, url, fingerprint, ...(!recorded ? { warning: "已提交发布，但私密状态记录暂未更新；请勿重复点击发布" } : {}) });
   } catch (error) {
     if (error instanceof RequestError) return reply({ error: error.message }, error.status);
     return reply({ error: "发布连接中断，请先查看部署记录再重试；私密草稿仍然保留" }, 502);

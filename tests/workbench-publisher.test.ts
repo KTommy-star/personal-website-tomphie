@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { handlePublishRequest } from "../supabase/functions/_shared/publisher";
 
 const env = { SUPABASE_URL: "https://project.supabase.co", SUPABASE_ANON_KEY: "public-fixture", SUPABASE_SERVICE_ROLE_KEY: "server-fixture", GITHUB_TOKEN: "github-fixture", GITHUB_REPOSITORY: "KTommy-star/personal-website-tomphie", PUBLIC_SITE_URL: "https://ktommy-star.github.io/personal-website-tomphie/", ALLOWED_ORIGINS: "https://ktommy-star.github.io" };
@@ -35,6 +36,30 @@ const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: bool
 };
 
 describe("owner-only publication boundary", () => {
+  it("recognizes an unchanged legacy publication without a stored fingerprint", async () => {
+    const io = fixture({ draft: { published_commit: commit, published_revision: 3, published_slug: "first-note", published_collection: "notes" } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(await res.json()).toMatchObject({ duplicate: true, commit });
+    expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("returns the existing release for identical content without another Git commit", async () => {
+    const fingerprint = createHash("sha256").update(JSON.stringify({ collection: "notes", slug: "first-note", metadata: { title: "真实记录", summary: "学习过程", tags: [], related: [], topic: "AI" }, body: draft.body })).digest("hex");
+    const io = fixture({ draft: { published_commit: commit, published_fingerprint: fingerprint, published_revision: 2, revision: 3, published_slug: "first-note", published_collection: "notes" } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ duplicate: true, commit, url: "https://ktommy-star.github.io/personal-website-tomphie/notes/first-note/" });
+    expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("updates an edited published draft at the original path and records the content fingerprint", async () => {
+    const io = fixture({ draft: { body: "修改后的正文", published_commit: commit, published_slug: "first-note", published_collection: "notes", published_fingerprint: "old-content" } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(200);
+    const tree = JSON.parse(String(io.calls.find(c => c.url.endsWith("/git/trees"))!.init.body));
+    expect(tree.tree.map((entry: { path: string }) => entry.path)).toEqual(["src/content/notes/first-note.md"]);
+    const recorded = JSON.parse(String(io.calls.find(c => c.init.method === "PATCH" && c.url.includes("workbench_drafts"))!.init.body));
+    expect(recorded.published_revision).toBe(3);
+    expect(recorded.published_fingerprint).toMatch(/^[a-f0-9]{64}$/);
+  });
   it("requires authentication before touching any backend", async () => {
     const io = fixture(); const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }, ""), env, io.fetcher);
     expect(res.status).toBe(401); expect(io.calls).toHaveLength(0);

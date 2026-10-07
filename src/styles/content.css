@@ -1,4 +1,7 @@
 .content-library { padding-block: 2.5rem 6rem; }
+.content-refresh { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; color:var(--color-quiet); font-size:.875rem; }
+.content-refresh button { min-height:44px; padding:.5rem 1rem; border:1px solid var(--color-line); border-radius:.5rem; background:var(--color-surface); color:var(--color-path); cursor:pointer; }
+.content-refresh button:disabled { opacity:.6; cursor:wait; }
 .content-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 1.5rem; margin-bottom: 2rem; }
 .content-search, .content-filter { display: grid; gap: .5rem; color: var(--color-quiet); font-size: .875rem; }
 .content-search { flex: 1; min-width: 12rem; }

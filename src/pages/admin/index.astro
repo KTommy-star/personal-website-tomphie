@@ -57,20 +57,25 @@ const home = import.meta.env.PUBLIC_SITE_URL || withBase("/", import.meta.env.BA
         <noscript><p class="notice">请启用 JavaScript 以登录和编辑私密草稿。</p></noscript>
       </section>
       <section id="workspace" hidden aria-label="私人写作工作台">
-        <div class="workspace-bar"><h1>私人草稿</h1><p id="save-status" role="status" aria-live="polite">选择或新建一篇草稿</p><button id="save-draft" type="button" disabled>保存草稿</button><button id="publish-draft" class="primary" type="button" disabled>发布到网站</button></div>
+        <div class="workspace-controls">
+        <div class="workspace-bar"><h1>私人写作</h1><p id="save-status" role="status" aria-live="polite">选择或新建一篇草稿</p><button id="delete-draft" class="danger" type="button" disabled>删除草稿</button><button id="save-draft" type="button" disabled>保存草稿</button><button id="publish-draft" class="primary" type="button" disabled>发布到网站</button></div>
         <p id="workbench-error" class="error" role="alert"></p>
         <div id="conflict-actions" class="notice" hidden><p>其他设备已更新此草稿，当前文字仍保留在编辑区。请先复制或下载当前正文，再决定是否重新载入云端版本。</p><button id="download-draft" type="button">下载当前草稿</button><button id="reload-draft" type="button">重新载入云端版本</button></div>
         <p id="publish-status" role="status" aria-live="polite"></p>
         <p id="publish-warning" class="notice" role="status" hidden></p>
         <a id="published-link" target="_blank" rel="noopener noreferrer" hidden>查看公开页面</a>
+        <a id="deployment-link" target="_blank" rel="noopener noreferrer" hidden>查看部署记录</a>
+        <button id="check-publication" type="button" hidden>重新检查进度</button>
+        </div>
         <div class="mobile-tabs" aria-label="工作区视图"><button type="button" data-view="directory" aria-pressed="false">草稿目录</button><button type="button" data-view="editor" aria-pressed="true">编辑</button><button type="button" data-view="preview" aria-pressed="false">预览</button></div>
         <div class="workbench-grid" data-view="editor">
           <aside class="directory-panel" aria-labelledby="directory-title">
             <h2 id="directory-title">草稿目录</h2>
             <label for="collection">栏目</label><select id="collection"><option value="notes">笔记</option><option value="research">科研</option><option value="projects">项目</option></select>
+            <label for="draft-filter">显示</label><select id="draft-filter"><option value="all">全部文章</option><option value="drafts">未发布草稿</option><option value="published">已发布 · 可继续编辑</option></select>
             <button id="new-draft" type="button">＋ 新建草稿</button>
             <p id="directory-state" class="quiet" role="status">正在读取草稿…</p><ul id="draft-list"></ul>
-            <p class="directory-note">草稿与图片保存在私密云端。保存不会发布，也不会更新公开网站。</p>
+            <p class="directory-note">已发布的文章也可以在这里修改，更新时保留原链接。保存只是私密草稿，不会自动公开；删除草稿不会撤下公开文章。</p>
           </aside>
           <section class="editor-panel" aria-labelledby="editor-title">
             <h2 id="editor-title">编辑</h2>

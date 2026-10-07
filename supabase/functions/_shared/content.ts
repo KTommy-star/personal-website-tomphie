@@ -13,6 +13,7 @@ export interface Draft {
   published_slug?: string | null;
   published_collection?: string | null;
   published_revision?: number | null;
+  published_fingerprint?: string | null;
   published_at?: string | null;
 }
 export const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -87,6 +88,12 @@ export function collectAssets(draft: Pick<Draft, "body" | "metadata">): string[]
     if (!assetPattern.test(path) || path.split("/").some(part => !uuidPattern.test(part.split(".")[0]))) throw new Error("图片引用格式不正确，请重新上传");
     return path;
   }))];
+}
+
+export async function publicationFingerprint(draft: Draft): Promise<string> {
+  const content = JSON.stringify({ collection: draft.collection, slug: draft.slug, metadata: validatePublication(draft), body: draft.body });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function serializePublication(draft: Draft, timestamp: string, replacements: Record<string, string> = {}): string {

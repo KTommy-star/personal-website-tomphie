@@ -1,4 +1,4 @@
-export { collections, createDraft, validatePublication } from "../../supabase/functions/_shared/content";
+export { collections, createDraft, validatePublication, publicationFingerprint } from "../../supabase/functions/_shared/content";
 export type { Collection, Draft } from "../../supabase/functions/_shared/content";
 
 export function assertPublicWorkbenchKey(key: string): void {

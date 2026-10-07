@@ -13,9 +13,11 @@ const subject = (entry: CollectionEntry<Collection>) => {
   return String(data.topic ?? entry.data.tags[0] ?? "记录");
 };
 const topics = [...new Set(entries.map(subject))];
+const version = entries.map(entry => `${entry.id}:${entry.data.updatedAt?.toISOString() ?? entry.data.publishedAt?.toISOString() ?? ""}`).join("|");
 ---
 
-<section class="content-library shell" data-content-library>
+<section class="content-library shell" data-content-library data-content-version={version}>
+  <div class="content-refresh"><p role="status" aria-live="polite" data-content-refresh-status></p><button type="button" data-content-refresh>刷新内容</button></div>
   {entries.length ? <>
     <div class="content-tools">
       <label class="content-search">搜索内容<input type="search" placeholder="标题、摘要或标签" data-content-search /></label>
@@ -38,18 +40,8 @@ const topics = [...new Set(entries.map(subject))];
 </section>
 
 <script>
-  import { matchingEntry } from "../../lib/public-content";
+  import { initContentLibrary } from "../../lib/content-library";
   document.querySelectorAll<HTMLElement>("[data-content-library]").forEach(root => {
-    const search = root.querySelector<HTMLInputElement>("[data-content-search]");
-    const filter = root.querySelector<HTMLSelectElement>("[data-content-filter]");
-    if (!search || !filter) return;
-    const records = [...root.querySelectorAll<HTMLElement>("[data-content-record]")];
-    const update = () => {
-      let count = 0;
-      for (const record of records) { record.hidden = !matchingEntry(record.dataset.search ?? "", search.value, filter.value, record.dataset.topic ?? ""); if (!record.hidden) count++; }
-      const total = root.querySelector("[data-content-count]"); if (total) total.textContent = `${count} 篇公开记录`;
-      const empty = root.querySelector<HTMLElement>("[data-content-no-results]"); if (empty) empty.hidden = count !== 0;
-    };
-    search.addEventListener("input", update); filter.addEventListener("change", update);
+    void initContentLibrary(root);
   });
 </script>
