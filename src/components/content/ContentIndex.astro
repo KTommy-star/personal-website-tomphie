@@ -21,7 +21,7 @@ const version = entries.map(entry => `${entry.id}:${entry.data.updatedAt?.toISOS
   {entries.length ? <>
     <div class="content-tools">
       <label class="content-search">搜索内容<input type="search" placeholder="标题、摘要或标签" data-content-search /></label>
-      <label class="content-filter">主题<select data-content-filter><option value="">全部主题</option>{topics.map(topic => <option value={topic}>{topic}</option>)}</select></label>
+      <label class="content-filter">主题<select class="select-control" data-content-filter><option value="">全部主题</option>{topics.map(topic => <option value={topic}>{topic}</option>)}</select></label>
       <p aria-live="polite" data-content-count>{entries.length} 篇公开记录</p>
     </div>
     <div class="content-records" role="list">

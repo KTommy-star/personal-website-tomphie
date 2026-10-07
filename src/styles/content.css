@@ -1,3 +1,4 @@
+@import "./select-controls.css";
 .content-library { padding-block: 2.5rem 6rem; }
 .content-refresh { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; color:var(--color-quiet); font-size:.875rem; }
 .content-refresh button { min-height:44px; padding:.5rem 1rem; border:1px solid var(--color-line); border-radius:.5rem; background:var(--color-surface); color:var(--color-path); cursor:pointer; }
@@ -6,7 +7,8 @@
 .content-search, .content-filter { display: grid; gap: .5rem; color: var(--color-quiet); font-size: .875rem; }
 .content-search { flex: 1; min-width: 12rem; }
 .content-tools input, .content-tools select { min-height: 2.75rem; background: var(--color-surface); border: 1px solid var(--color-line); border-radius: .5rem; padding: .5rem .75rem; color: var(--color-ink); font: inherit; font-size: 1rem; }
-.content-tools > p { color: var(--color-quiet); font-size: .875rem; padding-bottom: .5rem; }
+.content-filter { min-width: 10rem; }
+.content-tools > p { display: flex; align-items: center; min-height: 44px; margin: 0; color: var(--color-quiet); font-size: .875rem; font-variant-numeric: tabular-nums; }
 .content-record { border-block-start: 1px solid var(--color-line); padding-block: 2.5rem; }
 .content-record[hidden], .content-empty[hidden] { display: none; }
 .content-record.with-cover { display: grid; grid-template-columns: minmax(10rem, 1fr) 2fr; gap: 2rem; align-items: center; }

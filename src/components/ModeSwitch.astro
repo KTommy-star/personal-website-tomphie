@@ -1,0 +1,26 @@
+---
+import { withBase } from "../lib/paths";
+interface Props { active: "browse" | "write" }
+const { active } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const home = `${base.replace(/\/+$/, "")}/`;
+---
+<nav class="mode-switch" data-active={active} aria-label="浏览与写作">
+  <span class="mode-switch-indicator" aria-hidden="true"></span>
+  <a href={home} data-mode="browse" data-workbench-exit={active === "write" ? "" : undefined} aria-label="浏览网站" aria-current={active === "browse" ? "page" : undefined}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg><span>浏览</span>
+  </a>
+  <a href={withBase("/admin/", base)} data-mode="write" aria-label="写作工作台" aria-current={active === "write" ? "page" : undefined}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15Z"/></svg><span>写作</span>
+  </a>
+</nav>
+<style>
+  .mode-switch { position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr 1fr; flex: none; padding: 2px; border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent); border-radius: 999px; }
+  .mode-switch a { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-width: 4.25rem; min-height: 44px; padding: .35rem .6rem; border-radius: 999px; color: var(--color-quiet); font-size: .8rem; font-weight: 500; text-decoration: none; white-space: nowrap; }
+  .mode-switch a[aria-current="page"] { color: var(--color-ink); }
+  .mode-switch-indicator { position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 999px; background: color-mix(in srgb, var(--color-ink) 9%, transparent); }
+  .mode-switch[data-active="write"] .mode-switch-indicator { left: 50%; }
+  .mode-switch a:focus-visible { outline: 2px solid var(--color-path); outline-offset: 1px; }
+  @media (prefers-reduced-motion: no-preference) { .mode-switch a { transition: color 160ms ease, transform 160ms ease; } .mode-switch a:active { transform: scale(.96); } }
+  @media (max-width: 47.99rem) { .mode-switch a { min-width: 3.2rem; padding-inline: .4rem; } .mode-switch svg { display: none; } }
+</style>

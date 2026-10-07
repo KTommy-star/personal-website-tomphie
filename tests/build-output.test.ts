@@ -134,7 +134,10 @@ describe("static routes", () => {
     const configured = Boolean(config.url && config.key && config.email && config.username);
     expect(document.querySelector<HTMLElement>("#configuration-notice")!.hidden).toBe(configured);
     expect(document.querySelector<HTMLElement>("#login-form")!.hidden).toBe(!configured);
-    expect(html).not.toContain("data-glass");
+    expect(document.querySelector(".workbench-header .glass")).not.toBeNull();
+    expect(document.querySelector(".workspace-controls.glass")).not.toBeNull();
+    expect(document.querySelector(".directory-panel.glass")).not.toBeNull();
+    expect(document.querySelector(".editor-panel.glass, .preview-panel.glass")).toBeNull();
     expect(html).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(html).not.toContain("GITHUB_TOKEN");
     const home = await readFile(new URL("../dist/index.html", import.meta.url), "utf8");
@@ -149,5 +152,15 @@ describe("static routes", () => {
     };
     expect((await Promise.all(editorScripts.map(bundle))).join("\n")).toContain("tomphie-workbench-session");
     expect((await Promise.all(homeScripts.map(bundle))).join("\n")).not.toContain("tomphie-workbench-session");
+  });
+  it("provides the same two-way navigation switch with the correct active mode on both surfaces", async () => {
+    for (const [file, active] of [["index.html", "browse"], ["admin/index.html", "write"]]) {
+      const document = new JSDOM(await readFile(new URL(`../dist/${file}`, import.meta.url), "utf8")).window.document;
+      const switcher = document.querySelector('[aria-label="浏览与写作"]')!;
+      expect(switcher).not.toBeNull();
+      expect(switcher.querySelector('[aria-current="page"]')?.getAttribute("data-mode")).toBe(active);
+      expect(switcher.querySelector('a[data-mode="write"]')?.getAttribute("href")).toMatch(/\/admin\/$/);
+      expect(switcher.querySelector('a[data-mode="browse"]')?.getAttribute("href")).toMatch(/\/$/);
+    }
   });
 });

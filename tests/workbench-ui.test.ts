@@ -35,6 +35,33 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("workbench publication and deletion feedback", () => {
+  it("restores the unsaved-writing warning after a browser-history page restoration", async () => {
+    await openDraft();
+    const link = document.querySelector(".workbench-brand") as HTMLAnchorElement;
+    link.href = `${window.location.href.split("#")[0]}#fixture-navigation`;
+    link.click(); await flush();
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    const body = document.getElementById("body") as HTMLTextAreaElement;
+    body.value = "返回后新写的正文"; body.dispatchEvent(new Event("input", { bubbles: true }));
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+  });
+  it("keeps unsaved writing open when returning to the website fails to save and discard is canceled", async () => {
+    await openDraft();
+    const body = document.getElementById("body") as HTMLTextAreaElement;
+    body.value = "不能丢失的新正文"; body.dispatchEvent(new Event("input", { bubbles: true }));
+    service.saveDraft.mockRejectedValue(new Error("暂时无法保存"));
+    vi.mocked(window.confirm).mockReturnValue(false);
+    const link = document.querySelector(".workbench-brand") as HTMLAnchorElement;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    link.dispatchEvent(click); await flush();
+    expect(click.defaultPrevented).toBe(true);
+    expect(service.saveDraft).toHaveBeenCalledWith(expect.objectContaining({ body: "不能丢失的新正文" }));
+    expect(window.confirm).toHaveBeenCalled();
+    expect(body.value).toBe("不能丢失的新正文");
+    expect(document.getElementById("workbench-error")!.textContent).toContain("暂时无法保存");
+  });
   it("shows submission feedback immediately and prevents a second click until deployment finishes", async () => {
     await openDraft();
     let finish!: (value: unknown) => void;

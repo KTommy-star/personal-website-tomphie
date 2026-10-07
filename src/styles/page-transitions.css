@@ -1,0 +1,14 @@
+@view-transition { navigation: auto; }
+.landscape { view-transition-name: landscape; }
+.header-pane { view-transition-name: site-header; }
+.mode-switch-indicator { view-transition-name: mode-indicator; }
+::view-transition-group(landscape) { animation-duration: 240ms; }
+::view-transition-group(site-header), ::view-transition-group(mode-indicator) { animation-duration: 280ms; animation-timing-function: cubic-bezier(.22,1,.36,1); }
+::view-transition-old(landscape), ::view-transition-new(landscape) { animation: none; }
+::view-transition-old(root) { animation: page-out 140ms ease-out both; }
+::view-transition-new(root) { animation: page-in 220ms ease-out both; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; transform: translateY(.25rem); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

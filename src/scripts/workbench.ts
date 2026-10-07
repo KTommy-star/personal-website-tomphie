@@ -1,6 +1,7 @@
 import { createWorkbenchApi } from "../lib/workbench-api";
 import { createDraft, publicationFingerprint, type Collection, type Draft } from "../lib/workbench-content";
 import { renderWorkbenchPreview } from "../lib/workbench-preview";
+import { animate } from "motion";
 
 const root = document.querySelector<HTMLElement>("[data-workbench]")!;
 const api = createWorkbenchApi({ url: root.dataset.url ?? "", key: root.dataset.key ?? "", username: root.dataset.username ?? "", email: root.dataset.email ?? "" });
@@ -30,6 +31,7 @@ let checkingPublication = false;
 let deleting = false;
 let loading = false;
 let navigating = false;
+let leaving = false;
 let previewGeneration = 0;
 let publishGeneration = 0;
 const assetCache = new Map<string, { url: string; expires: number }>();
@@ -43,7 +45,7 @@ function updateButtons() {
   const busy = uploading || publishing || deleting || loading || navigating;
   saveButton.disabled = !current || conflict || busy;
   publishButton.disabled = !current || conflict || busy || deploying;
-  publishButton.textContent = publishing ? "正在提交…" : deploying ? "部署中…" : current?.published_commit ? "更新已发布文章" : "发布到网站";
+  publishButton.textContent = publishing ? "正在提交…" : deploying ? "部署中…" : current?.published_commit ? "更新到网站" : "发布到网站";
   publishButton.setAttribute("aria-busy", String(publishing || deploying));
   deleteButton.disabled = !current || busy || deploying;
   deleteButton.textContent = deleting ? "正在删除…" : "删除草稿";
@@ -265,9 +267,17 @@ async function refreshPreview() {
   }
 }
 
+let viewAnimation: ReturnType<typeof animate> | undefined;
 function showView(view: string) {
-  document.querySelector<HTMLElement>(".workbench-grid")!.dataset.view = view;
+  const grid = document.querySelector<HTMLElement>(".workbench-grid")!;
+  const previous = grid.dataset.view;
+  viewAnimation?.cancel();
+  grid.dataset.view = view;
   document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach(button => { if (button.tagName === "BUTTON") button.setAttribute("aria-pressed", String(button.dataset.view === view)); });
+  if (previous !== view && window.matchMedia?.("(max-width: 800px) and (prefers-reduced-motion: no-preference)").matches) {
+    const panel = grid.querySelector<HTMLElement>(`.${view}-panel`);
+    if (panel) viewAnimation = animate(panel, { opacity: [0, 1], y: [4, 0] }, { duration: .18, ease: [.22, 1, .36, 1] });
+  }
 }
 
 function insertText(before: string, after = "", placeholder = "文字") {
@@ -624,8 +634,25 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
   } catch (error) { errorBox.textContent = message(error); }
 });
 window.addEventListener("beforeunload", event => {
-  if (edited !== saved || uploading || publishing || deleting) event.preventDefault();
+  if (!leaving && (edited !== saved || uploading || publishing || deleting)) event.preventDefault();
 });
+window.addEventListener("pageshow", () => { leaving = false; });
+
+document.querySelectorAll<HTMLAnchorElement>("[data-workbench-exit]").forEach(link => link.addEventListener("click", async event => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  if (await guardChanges()) { leaving = true; window.location.assign(link.href); }
+}));
+
+const controls = document.querySelector<HTMLElement>(".workspace-controls");
+if (controls && typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(() => {
+    const header = document.querySelector(".workbench-header")?.getBoundingClientRect();
+    const height = controls.getBoundingClientRect().height;
+    const offset = getComputedStyle(controls).position === "sticky" ? parseFloat(getComputedStyle(controls).top) + height + 20 : (header?.bottom ?? 76) + 16;
+    root.style.setProperty("--workspace-offset", `${offset}px`);
+  }).observe(controls);
+}
 
 if (api.configured) {
   const loginForm = element<HTMLFormElement>("login-form");
