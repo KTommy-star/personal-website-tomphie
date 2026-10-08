@@ -5,7 +5,7 @@ import { renderLensMap } from "../vendor/liquid-glass.js";
 export type LandscapeLens = {
   key: HTMLElement;
   x: number; y: number; width: number; height: number;
-  mapWidth: number; mapHeight: number; radius: number; bend: number;
+  mapWidth: number; mapHeight: number; radius: number; bend: number; bezel: number;
 };
 
 // One shared GL renderer/scene texture. The narrow optical strips live INSIDE
@@ -13,12 +13,13 @@ export type LandscapeLens = {
 // Never draw moving card outlines into a fixed wallpaper or copy a full scene.
 const vertex = `
 attribute vec2 aPos;
-uniform vec2 uSize;
+attribute vec2 aLocal;
+uniform vec2 uAtlasSize;
 uniform vec4 uLens;
 varying vec2 vPos;
 void main() {
-  vPos = uLens.xy + aPos / uSize * uLens.zw;
-  vec2 p = aPos / uSize * 2.0 - 1.0;
+  vPos = uLens.xy + aLocal * uLens.zw;
+  vec2 p = aPos / uAtlasSize * 2.0 - 1.0;
   gl_Position = vec4(p.x, -p.y, 0.0, 1.0);
 }`;
 const fragment = `
@@ -72,7 +73,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { gl.deleteProgram(program); return null; }
   gl.useProgram(program);
-  const locations = Object.fromEntries(["uSize", "uSceneSize", "uTheme", "uLens", "uBend", "uDay", "uNight", "uMap"].map(name => [name, gl.getUniformLocation(program, name)]));
+  const locations = Object.fromEntries(["uAtlasSize", "uSceneSize", "uTheme", "uLens", "uBend", "uDay", "uNight", "uMap"].map(name => [name, gl.getUniformLocation(program, name)]));
   gl.uniform1i(locations.uDay, 0);
   gl.uniform1i(locations.uNight, 1);
   gl.uniform1i(locations.uMap, 2);
@@ -80,8 +81,11 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   const position = gl.getAttribLocation(program, "aPos");
   gl.enableVertexAttribArray(position);
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-  const vertices = new Float32Array(12);
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 16, 0);
+  const local = gl.getAttribLocation(program, "aLocal");
+  gl.enableVertexAttribArray(local);
+  gl.vertexAttribPointer(local, 2, gl.FLOAT, false, 16, 8);
+  const vertices = new Float32Array(24);
   const texture = (source: HTMLCanvasElement) => {
     const result = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, result);
@@ -92,12 +96,18 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
     return result;
   };
-  const rect = (x: number, y: number, width: number, height: number) => {
-    vertices.set([x, y, x + width, y, x, y + height, x, y + height, x + width, y, x + width, y + height]);
+  const rect = (strip: Strip, w: number, h: number) => {
+    const rotated = strip.width < strip.height;
+    const sw = rotated ? strip.height : strip.width, sh = rotated ? strip.width : strip.height;
+    const x0 = strip.x / w, y0 = strip.y / h, x1 = (strip.x + strip.width) / w, y1 = (strip.y + strip.height) / h;
+    const [a, b, c, d] = rotated ? [[x0,y0], [x0,y1], [x1,y0], [x1,y1]] : [[x0,y0], [x1,y0], [x0,y1], [x1,y1]];
+    // Atlas pixels and normalized lens coordinates in the same vertex buffer.
+    vertices.set([0,strip.row,...a, sw,strip.row,...b, 0,strip.row+sh,...c,
+      0,strip.row+sh,...c, sw,strip.row,...b, sw,strip.row+sh,...d]);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   };
-  type Strip = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; x: number; y: number; width: number; height: number };
+  type Strip = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; x: number; y: number; width: number; height: number; row: number };
   const maps = new Map<HTMLElement, { shape: string; texture: WebGLTexture; optics: HTMLElement; strips: Strip[] }>();
   let size = "";
   let dayTexture: WebGLTexture | undefined;
@@ -105,6 +115,9 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
   let stopped = false;
   let enabled = true;
   const ratio = Math.min(devicePixelRatio || 1, 1.5);
+  // One compact readback for ALL visible rims, not four viewport readbacks/card.
+  const staging = document.createElement("canvas");
+  const stagingContext = staging.getContext("2d", { willReadFrequently: true })!;
 
   // Bake only our two authored pictures, wash and celestial decorations on resize.
   // No DOM screenshots, no per-frame image uploads, no network/cross-origin content.
@@ -154,25 +167,22 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
         nightTexture = bake(night, true, width, height);
         size = nextSize;
       }
-      // Scratch space only: never displayed, never resized on ordinary scroll.
-      const scratchWidth = Math.ceil(Math.max(width, ...lenses.map(lens => lens.mapWidth)) * ratio);
-      const scratchHeight = Math.ceil(Math.max(height, ...lenses.map(lens => lens.mapHeight)) * ratio);
-      if (canvas.width < scratchWidth) canvas.width = scratchWidth;
-      if (canvas.height < scratchHeight) canvas.height = scratchHeight;
       gl.uniform2f(locations.uSceneSize, width, height);
       gl.uniform1f(locations.uTheme, Number(getComputedStyle(night.parentElement!).opacity));
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dayTexture!);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, nightTexture!);
       gl.disable(gl.BLEND);
       gl.activeTexture(gl.TEXTURE2);
+      const active: { lens: LandscapeLens; map: NonNullable<ReturnType<typeof maps.get>> }[] = [];
+      let atlasWidth = 0, atlasHeight = 0;
       for (const lens of lenses) {
-        const shape = `${lens.mapWidth}|${lens.mapHeight}|${lens.radius}`;
+        const shape = `${lens.mapWidth}|${lens.mapHeight}|${lens.radius}|${lens.bezel}`;
         let map = maps.get(lens.key);
         if (!map || map.shape !== shape) {
           if (map) { gl.deleteTexture(map.texture); map.optics.remove(); }
           const half = Math.min(lens.mapWidth, lens.mapHeight) / 2;
           const { canvas: pixels } = renderLensMap({ width: lens.mapWidth, height: lens.mapHeight, radius: lens.radius,
-            bezel: Math.min(24, half * .64) / half, curvature: 2.5, ior: 1.45, specular: .42, specularWidth: 1.4 },
+            bezel: Math.min(lens.bezel, half * .64) / half, curvature: 2.5, ior: 1.45, specular: lens.bezel <= 6 ? .14 : .42, specularWidth: 1.4 },
             Math.min(1, 512 / Math.max(lens.mapWidth, lens.mapHeight)));
           const optics = document.createElement("div");
           optics.className = "liquid-glass-optics";
@@ -180,7 +190,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
           optics.setAttribute("aria-hidden", "true");
           const w = Math.ceil(lens.mapWidth * ratio), h = Math.ceil(lens.mapHeight * ratio);
           // A circular lens's curved rim extends farther in at the diagonal.
-          const inset = Math.max(28, lens.radius * (1 - Math.SQRT1_2) + Math.min(24, half * .64) * Math.SQRT1_2 + 2);
+          const inset = Math.max(lens.bezel + 2, lens.radius * (1 - Math.SQRT1_2) + Math.min(lens.bezel, half * .64) * Math.SQRT1_2 + 2);
           const band = Math.min(Math.ceil(inset * ratio), Math.floor(Math.min(w, h) / 2));
           const strips = [[0, 0, w, band], [0, h - band, w, band],
             [0, band, band, h - 2 * band], [w - band, band, band, h - 2 * band]]
@@ -190,28 +200,44 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
               strip.width = sw; strip.height = sh;
               strip.style.cssText = `left:${x / w * 100}%;top:${y / h * 100}%;width:${sw / w * 100}%;height:${sh / h * 100}%`;
               optics.append(strip);
-              return { canvas: strip, context: strip.getContext("2d")!, x, y, width: sw, height: sh };
+              return { canvas: strip, context: strip.getContext("2d")!, x, y, width: sw, height: sh, row: 0 };
             });
           lens.key.prepend(optics);
           map = { shape, texture: texture(pixels), optics, strips }; maps.set(lens.key, map);
         }
-        const w = Math.ceil(lens.mapWidth * ratio), h = Math.ceil(lens.mapHeight * ratio);
-        gl.viewport(0, canvas.height - h, w, h);
-        gl.disable(gl.SCISSOR_TEST);
-        gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.uniform2f(locations.uSize, lens.mapWidth, lens.mapHeight);
+        for (const strip of map.strips) {
+          strip.row = atlasHeight;
+          atlasWidth = Math.max(atlasWidth, strip.width, strip.height);
+          atlasHeight += Math.min(strip.width, strip.height);
+        }
+        active.push({ lens, map });
+      }
+      if (!active.length) return;
+      if (canvas.width < atlasWidth) canvas.width = atlasWidth;
+      if (canvas.height < atlasHeight) canvas.height = Math.ceil(atlasHeight / 64) * 64;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(locations.uAtlasSize, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      for (const { lens, map } of active) {
         gl.bindTexture(gl.TEXTURE_2D, map.texture);
         gl.uniform4f(locations.uLens, lens.x, lens.y, lens.width, lens.height);
         gl.uniform1f(locations.uBend, lens.bend);
-        gl.enable(gl.SCISSOR_TEST);
-        // Draw all edges before reading the result: one GPU flush, no center pass.
         for (const strip of map.strips) {
-          gl.scissor(strip.x, canvas.height - strip.y - strip.height, strip.width, strip.height);
-          rect(0, 0, lens.mapWidth, lens.mapHeight);
+          rect(strip, Math.ceil(lens.mapWidth * ratio), Math.ceil(lens.mapHeight * ratio));
         }
+      }
+      if (staging.width !== canvas.width) staging.width = canvas.width;
+      if (staging.height !== canvas.height) staging.height = canvas.height;
+      stagingContext.clearRect(0, 0, staging.width, staging.height);
+      stagingContext.drawImage(canvas, 0, 0);
+      for (const { map } of active) {
         for (const strip of map.strips) {
           strip.context.clearRect(0, 0, strip.width, strip.height);
-          strip.context.drawImage(canvas, strip.x, strip.y, strip.width, strip.height, 0, 0, strip.width, strip.height);
+          if (strip.width < strip.height) {
+            strip.context.setTransform(0, 1, 1, 0, 0, 0);
+            strip.context.drawImage(staging, 0, strip.row, strip.height, strip.width, 0, 0, strip.height, strip.width);
+            strip.context.resetTransform();
+          } else strip.context.drawImage(staging, 0, strip.row, strip.width, strip.height, 0, 0, strip.width, strip.height);
         }
       }
       if (landscape.dataset.glassScene !== "refractive") landscape.dataset.glassScene = "refractive";

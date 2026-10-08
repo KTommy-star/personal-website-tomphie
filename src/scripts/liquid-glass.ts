@@ -9,6 +9,8 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const contrast = matchMedia("(prefers-contrast: more)");
 const transparency = matchMedia("(prefers-reduced-transparency: reduce)");
 const disabled = () => contrast.matches || transparency.matches;
+const touch = matchMedia("(pointer: coarse)").matches;
+const bezelWidth = touch ? 6 : 24;
 
 if (landscape) {
   type Lens = ReturnType<typeof createGlass>;
@@ -60,7 +62,8 @@ if (landscape) {
       const { element, source, scene } = surface;
       if (surface.gpu && rect) {
         lenses.push({ key: element, x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-          mapWidth: width, mapHeight: height, radius, bend: surface.bend * (element.hasAttribute("data-glass-pressed") ? 1.18 : 1) });
+          mapWidth: width, mapHeight: height, radius, bezel: bezelWidth,
+          bend: surface.bend * (element.hasAttribute("data-glass-pressed") ? 1.18 : 1) });
         if (renderer && element.dataset.glass !== "refractive") element.dataset.glass = "refractive";
         continue;
       }
@@ -69,14 +72,14 @@ if (landscape) {
         if (scene.style.height !== sceneHeight) scene.style.height = sceneHeight;
         if (scene.style.transform !== sceneTransform) scene.style.transform = sceneTransform;
       }
-      const bezel = Math.min(28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
+      const bezel = Math.min(touch ? 6 : 28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
       if (!surface.lens) {
         surface.lens = createGlass(source, {
           mode: surface.native ? "backdrop" : "content",
           fit: true, radius, bezel, curvature: 2.5, ior: 1.45,
           // One optical pass per panel, not three full-size colour-channel passes.
           refraction: surface.bend, chroma: 0,
-          blur: element.matches(".mobile-menu-pane") ? 3 : 0, specular: .42, specularWidth: 1.4,
+          blur: element.matches(".mobile-menu-pane") ? 8 : 0, specular: touch ? .14 : .42, specularWidth: 1.4,
           mapScale: Math.min(1, 768 / Math.max(width, height)),
         });
         element.dataset.glass = "refractive";
@@ -140,7 +143,8 @@ if (landscape) {
     }
     const surface: Surface = {
       element, source, portrait, scene, native, gpu, scrolls: gpu, visible: false,
-      bend: element.matches(".header-pane, .mobile-menu-pane, .portrait-caption, .journey-filters") ? 16 : 21,
+      bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 3 : 4)
+        : element.matches(".header-pane, .mobile-menu-pane, .portrait-caption, .journey-filters") ? 16 : 21,
     };
     surfaces.push(surface);
     visibility.observe(element);

@@ -68,7 +68,7 @@ const isCurrent = (href: string) => {
   <nav id="mobile-navigation" hidden class="mobile-menu-pane glass absolute top-full z-40 mt-3 w-52 p-2 shadow-lg lg:hidden" aria-label="移动端主导航">
     <ul class="grid gap-1" role="list">
       {navigation.map((item) => (
-        <li><a class:list={["flex min-h-11 items-center px-3 text-sm no-underline transition-colors duration-150", isCurrent(item.href) ? "bg-ink text-on-ink" : "text-ink hover:bg-surface"]}
+        <li><a class="mobile-menu-link flex min-h-11 items-center px-3 text-sm no-underline"
           href={withBase(item.href, base)} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a></li>
       ))}
     </ul>
@@ -80,7 +80,11 @@ const isCurrent = (href: string) => {
   .header-pane { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.6rem; padding: .25rem 1.25rem; border-radius: 999px; pointer-events: auto; background: var(--color-surface-glass-strong); }
   .brand-link { font-size: .9rem; letter-spacing: -.025em; }
   .nav-link[aria-current="page"] { background: color-mix(in srgb, var(--color-ink) 7%, transparent); border-radius: 999px; }
-  .mobile-menu-pane { --glass-blur: 3px; position: absolute; right: 1.5rem; border-radius: 1.2rem; background: color-mix(in srgb, var(--color-surface) 48%, transparent); }
+  .mobile-menu-pane { --glass-blur: 8px; --menu-radius: 1.2rem; position: absolute; right: 1.5rem; border-radius: var(--menu-radius); pointer-events: auto; background: color-mix(in srgb, var(--color-surface) 88%, transparent); }
+  .mobile-menu-link { border-radius: calc(var(--menu-radius) - .5rem); color: var(--color-ink); font-weight: 500; -webkit-tap-highlight-color: transparent; }
+  .mobile-menu-link[aria-current="page"] { background: color-mix(in srgb, var(--color-path) 12%, transparent); color: var(--color-path); font-weight: 600; }
+  .mobile-menu-link:hover, .mobile-menu-link:focus-visible { background: color-mix(in srgb, var(--color-path) 9%, transparent); }
+  .mobile-menu-link:active { background: color-mix(in srgb, var(--color-path) 18%, transparent); }
   .mobile-menu-pane[hidden] { display: none; }
   summary::-webkit-details-marker { display: none; }
   :global(.tomphie-logo.brand-logo) {
@@ -121,6 +125,7 @@ const isCurrent = (href: string) => {
   }
 
   @media (prefers-reduced-motion: no-preference) {
+    .mobile-menu-link { transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; }
     .mobile-menu-pane:not([hidden]) {
       animation: menu-enter 160ms ease-out both;
       transform-origin: top right;

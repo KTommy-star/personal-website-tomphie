@@ -40,9 +40,15 @@
 .liquid-glass-refraction { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .liquid-glass-scenery { position: absolute !important; inset: auto !important; left: 0 !important; top: 0 !important; z-index: 0 !important; max-width: none; pointer-events: none; transform-origin: top left; }
 .portrait-caption .liquid-glass-optics { opacity: .62; }
-.liquid-glass-optics[data-glass-rims] { inset: -1px; opacity: 1; }
+.liquid-glass-optics[data-glass-rims] { inset: -1px; opacity: .65; }
 .liquid-glass-rim { position: absolute; pointer-events: none; }
 .glass { transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease, box-shadow 700ms ease; }
+@media (pointer: coarse) {
+  .glass { border-color: color-mix(in srgb, var(--color-surface) 20%, transparent); box-shadow: inset 0 1px 1px rgba(255,255,255,.24), 0 8px 28px rgba(19,51,55,.08); }
+  .glass::before { opacity: .45; }
+  /* Touch-down during a scroll must not squeeze a whole panel. */
+  :root .glass:active { transform: none; }
+}
 @supports not (backdrop-filter: blur(1px)) { :root body .glass { background: var(--color-surface); color: var(--color-ink); } }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; transition: none; }

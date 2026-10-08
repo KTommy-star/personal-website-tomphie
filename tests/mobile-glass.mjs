@@ -12,6 +12,63 @@ before(async () => {
 });
 after(async () => { await Promise.all([safari?.close(), chrome?.close()]); });
 
+test('phone menu links respond to touch and the selected item follows the inset rounded outline', async () => {
+  for (const browser of [safari, chrome]) {
+    const page = await browser.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true });
+    await page.goto(new URL('notes/', url).href);
+    await page.locator('.mobile-menu summary').tap();
+    const current = page.locator('.mobile-menu-pane [aria-current="page"]');
+    await current.waitFor({ state: 'visible' });
+    const shape = await current.evaluate(e => {
+      const menu = e.closest('nav'); const style = getComputedStyle(e); const container = getComputedStyle(menu);
+      const rect = e.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return { radius: parseFloat(style.borderTopLeftRadius), outer: parseFloat(container.borderTopLeftRadius), inset: parseFloat(container.paddingLeft), clickable: e.contains(hit) };
+    });
+    assert(shape.clickable, 'menu must receive touches instead of passing them through the header');
+    assert(shape.radius >= 10 && Math.abs(shape.outer - shape.inset - shape.radius) <= 3, 'selected row has a concentric rounded outline');
+    const target = page.locator('.mobile-menu-pane').getByRole('link', { name: '科研', exact: true });
+    await target.tap({ timeout: 2000 });
+    await page.waitForURL(location => /\/research\/?$/.test(location.pathname), { timeout: 10000 });
+    assert.equal(await page.locator('h1').textContent(), '科研');
+    await page.close();
+  }
+});
+
+test('phone refraction stays thin and shares only one GPU readback per rendered frame', async () => {
+  const page = await safari.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  await page.goto(url);
+  const card = page.locator('.route-card').first(); await card.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('.route-card .liquid-glass-rim'));
+  const budget = await page.evaluate(async () => {
+    const scratch = document.querySelector('.landscape-glass-canvas');
+    const draw = CanvasRenderingContext2D.prototype.drawImage;
+    let readbacks = 0;
+    CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (source === scratch) readbacks++; return draw.call(this, source, ...args); };
+    scrollBy(0, 40); dispatchEvent(new Event('scroll'));
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    CanvasRenderingContext2D.prototype.drawImage = draw;
+    const top = document.querySelector('.route-card .liquid-glass-rim').getBoundingClientRect();
+    return { readbacks, thickness: top.height, pixels: scratch.width * scratch.height };
+  });
+  assert(budget.readbacks > 0 && budget.readbacks <= 2, `at most one GPU snapshot in each of two possible render frames: ${JSON.stringify(budget)}`);
+  assert(budget.thickness <= 18, `no broad picture frame: ${JSON.stringify(budget)}`);
+  assert(budget.pixels < 440 * 956, 'edge atlas is smaller than a viewport');
+  await page.close();
+});
+
+test('starting a touch scroll on a glass card does not shrink the entire card', async () => {
+  const page = await chrome.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true });
+  await page.goto(url);
+  const card = page.locator('.route-card').first(); await card.scrollIntoViewIfNeeded();
+  const box = await card.boundingBox(); const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + 120 }] });
+  await page.waitForTimeout(140);
+  assert.equal(await card.evaluate(e => getComputedStyle(e).transform), 'none', 'scrolling should not trigger a card-wide squeeze');
+  await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  await page.close();
+});
+
 test('WebKit glass edges stay attached during scrolling even when rendering callbacks are delayed', async () => {
   const page = await safari.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   await page.goto(url);
