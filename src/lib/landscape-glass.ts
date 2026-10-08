@@ -5,7 +5,7 @@ import { renderLensMap } from "../vendor/liquid-glass.js";
 export type LandscapeLens = {
   key: HTMLElement;
   x: number; y: number; width: number; height: number;
-  mapWidth: number; mapHeight: number; radius: number; bend: number; bezel: number;
+  mapWidth: number; mapHeight: number; radius: number; bend: number; bezel: number; specular: number;
 };
 
 // One shared GL renderer/scene texture. The narrow optical strips live INSIDE
@@ -176,13 +176,13 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
       const active: { lens: LandscapeLens; map: NonNullable<ReturnType<typeof maps.get>> }[] = [];
       let atlasWidth = 0, atlasHeight = 0;
       for (const lens of lenses) {
-        const shape = `${lens.mapWidth}|${lens.mapHeight}|${lens.radius}|${lens.bezel}`;
+        const shape = `${lens.mapWidth}|${lens.mapHeight}|${lens.radius}|${lens.bezel}|${lens.specular}`;
         let map = maps.get(lens.key);
         if (!map || map.shape !== shape) {
           if (map) { gl.deleteTexture(map.texture); map.optics.remove(); }
           const half = Math.min(lens.mapWidth, lens.mapHeight) / 2;
           const { canvas: pixels } = renderLensMap({ width: lens.mapWidth, height: lens.mapHeight, radius: lens.radius,
-            bezel: Math.min(lens.bezel, half * .64) / half, curvature: 2.5, ior: 1.45, specular: lens.bezel <= 6 ? .14 : .42, specularWidth: 1.4 },
+            bezel: Math.min(lens.bezel, half * .64) / half, curvature: 2.5, ior: 1.45, specular: lens.specular, specularWidth: 1.4 },
             Math.min(1, 512 / Math.max(lens.mapWidth, lens.mapHeight)));
           const optics = document.createElement("div");
           optics.className = "liquid-glass-optics";

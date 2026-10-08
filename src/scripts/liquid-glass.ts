@@ -10,7 +10,8 @@ const contrast = matchMedia("(prefers-contrast: more)");
 const transparency = matchMedia("(prefers-reduced-transparency: reduce)");
 const disabled = () => contrast.matches || transparency.matches;
 const touch = matchMedia("(pointer: coarse)").matches;
-const bezelWidth = touch ? 6 : 24;
+const bezelWidth = touch ? 10 : 24;
+const specular = touch ? .24 : .42;
 
 if (landscape) {
   type Lens = ReturnType<typeof createGlass>;
@@ -62,7 +63,7 @@ if (landscape) {
       const { element, source, scene } = surface;
       if (surface.gpu && rect) {
         lenses.push({ key: element, x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-          mapWidth: width, mapHeight: height, radius, bezel: bezelWidth,
+          mapWidth: width, mapHeight: height, radius, bezel: bezelWidth, specular,
           bend: surface.bend * (element.hasAttribute("data-glass-pressed") ? 1.18 : 1) });
         if (renderer && element.dataset.glass !== "refractive") element.dataset.glass = "refractive";
         continue;
@@ -72,14 +73,14 @@ if (landscape) {
         if (scene.style.height !== sceneHeight) scene.style.height = sceneHeight;
         if (scene.style.transform !== sceneTransform) scene.style.transform = sceneTransform;
       }
-      const bezel = Math.min(touch ? 6 : 28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
+      const bezel = Math.min(touch ? bezelWidth : 28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
       if (!surface.lens) {
         surface.lens = createGlass(source, {
           mode: surface.native ? "backdrop" : "content",
           fit: true, radius, bezel, curvature: 2.5, ior: 1.45,
           // One optical pass per panel, not three full-size colour-channel passes.
           refraction: surface.bend, chroma: 0,
-          blur: element.matches(".mobile-menu-pane") ? 8 : 0, specular: touch ? .14 : .42, specularWidth: 1.4,
+          blur: element.matches(".mobile-menu-pane") ? 8 : 0, specular, specularWidth: 1.4,
           mapScale: Math.min(1, 768 / Math.max(width, height)),
         });
         element.dataset.glass = "refractive";
@@ -96,7 +97,8 @@ if (landscape) {
   // Follow only short presses/hover transitions, not an idle render loop.
   const followInteraction = (surface: Surface) => {
     if (surface.native) return;
-    if (!reduced.matches) followUntil = performance.now() + 380;
+    // Touch panels do not move: the glow animates in CSS, not an idle GPU loop.
+    if (!reduced.matches && !touch) followUntil = performance.now() + 380;
     requestUpdate();
   };
 
@@ -143,7 +145,7 @@ if (landscape) {
     }
     const surface: Surface = {
       element, source, portrait, scene, native, gpu, scrolls: gpu, visible: false,
-      bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 3 : 4)
+      bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 9 : 12)
         : element.matches(".header-pane, .mobile-menu-pane, .portrait-caption, .journey-filters") ? 16 : 21,
     };
     surfaces.push(surface);
@@ -153,15 +155,15 @@ if (landscape) {
 
     let lightFrame = 0;
     const positionLight = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || disabled() || reduced.matches || lightFrame) return;
+      if (disabled() || reduced.matches || lightFrame) return;
       lightFrame = requestAnimationFrame(() => {
         const rect = element.getBoundingClientRect();
-        element.style.setProperty("--pointer-x", `${(event.clientX - rect.left) / rect.width * 100}%`);
-        element.style.setProperty("--pointer-y", `${(event.clientY - rect.top) / rect.height * 100}%`);
+        element.style.setProperty("--pointer-x", `${Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100))}%`);
+        element.style.setProperty("--pointer-y", `${Math.max(0, Math.min(100, (event.clientY - rect.top) / rect.height * 100))}%`);
         lightFrame = 0;
       });
     };
-    element.addEventListener("pointermove", positionLight);
+    element.addEventListener("pointermove", event => { if (event.pointerType !== "touch") positionLight(event); });
     element.addEventListener("pointerenter", () => followInteraction(surface));
     element.addEventListener("pointerleave", () => followInteraction(surface));
     element.addEventListener("pointerdown", event => {
@@ -201,7 +203,17 @@ if (landscape) {
   };
   contrast.addEventListener("change", preferenceChanged);
   transparency.addEventListener("change", preferenceChanged);
+  const updateScrollEdge = () => {
+    const active = scrollY > 24;
+    // Only write when crossing the edge, never on every scrolling frame.
+    if (document.documentElement.hasAttribute("data-scroll-edge") !== active) {
+      document.documentElement.toggleAttribute("data-scroll-edge", active);
+    }
+  };
+  updateScrollEdge();
+  window.addEventListener("pageshow", updateScrollEdge);
   window.addEventListener("scroll", () => {
+    updateScrollEdge();
     // Native lenses need no JS coordinates, style writes or alignment RAF on scroll.
     if (surfaces.some(surface => surface.visible && surface.scrolls)) requestUpdate();
   }, { passive: true });

@@ -2,15 +2,35 @@
 .glass {
   --glass-blur: .6px;
   --glass-rim: rgba(255,255,255,.6);
+  --glass-light: rgba(255,255,255,.3);
   position: relative;
   isolation: isolate;
+  color: var(--color-ink);
   background: var(--color-surface-glass);
   border: 1px solid color-mix(in srgb, var(--color-surface) 38%, transparent);
   box-shadow: inset 0 1px 1px rgba(255,255,255,.52), inset 0 -1px 1px rgba(255,255,255,.17), 0 12px 40px rgba(19,51,55,.1), 0 2px 8px rgba(19,51,55,.04);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(112%);
   backdrop-filter: blur(var(--glass-blur)) saturate(112%);
 }
-[data-theme="dark"] .glass { --glass-rim: rgba(212,244,244,.32); }
+[data-theme="dark"] .glass { --glass-rim: rgba(212,244,244,.32); --glass-light: rgba(208,239,240,.16); }
+/* A soft scroll edge, separate from the lens: keep text behind navigation
+   from competing with its controls, without blurring the clear glass cards. */
+.site-header::before, .workbench-header::before {
+  content: "";
+  position: absolute;
+  inset: -1rem 0 auto;
+  height: calc(100% + 3rem);
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(var(--color-paper), color-mix(in srgb, var(--color-paper) 95%, transparent) 65%, transparent);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+[data-scroll-edge] .site-header::before, [data-scroll-edge] .workbench-header::before { opacity: 1; }
+.site-header > .header-pane, .workbench-header > .header-pane { z-index: 1; }
+.site-header .header-pane, .workbench-header .header-pane {
+  transition: background-color 700ms ease, border-color 700ms ease, color 180ms ease-out, box-shadow 700ms ease;
+}
 .glass::before {
   content: "";
   position: absolute;
@@ -29,26 +49,28 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(ellipse at var(--pointer-x, 25%) var(--pointer-y, 0%), rgba(255,255,255,.2), transparent 52%);
-  opacity: .22;
-  transition: opacity 250ms ease;
+  background: radial-gradient(ellipse at var(--pointer-x, 25%) var(--pointer-y, 0%), var(--glass-light), transparent 58%), linear-gradient(135deg, rgba(255,255,255,.12), transparent 34%, transparent 70%, rgba(153,215,229,.08));
+  opacity: .42;
+  transition: opacity 180ms ease-out;
   z-index: -1;
 }
-.glass:hover::after, .glass:focus-within::after { opacity: .5; }
-.glass[data-glass-pressed]::after { opacity: .95; }
+@media (hover: hover) { .glass:hover::after { opacity: .65; } }
+.glass:focus-within::after { opacity: .65; }
+.glass[data-glass-pressed]::after { opacity: 1; transition-duration: 70ms; }
 .liquid-glass-optics { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: -2; opacity: .86; }
 .liquid-glass-refraction { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .liquid-glass-scenery { position: absolute !important; inset: auto !important; left: 0 !important; top: 0 !important; z-index: 0 !important; max-width: none; pointer-events: none; transform-origin: top left; }
 .portrait-caption .liquid-glass-optics { opacity: .62; }
-.liquid-glass-optics[data-glass-rims] { inset: -1px; opacity: .65; }
+.liquid-glass-optics[data-glass-rims] { inset: -1px; opacity: .82; }
 .liquid-glass-rim { position: absolute; pointer-events: none; }
 .glass { transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease, box-shadow 700ms ease; }
 @media (pointer: coarse) {
   .glass { border-color: color-mix(in srgb, var(--color-surface) 20%, transparent); box-shadow: inset 0 1px 1px rgba(255,255,255,.24), 0 8px 28px rgba(19,51,55,.08); }
-  .glass::before { opacity: .45; }
+  .glass::before { opacity: .7; }
   /* Touch-down during a scroll must not squeeze a whole panel. */
   :root .glass:active { transform: none; }
 }
+@media (prefers-reduced-motion: reduce) { .glass::after, .site-header::before, .workbench-header::before { transition: none; } }
 @supports not (backdrop-filter: blur(1px)) { :root body .glass { background: var(--color-surface); color: var(--color-ink); } }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :root body .glass { background: var(--color-surface); color: var(--color-ink); -webkit-backdrop-filter: none; backdrop-filter: none; transition: none; }

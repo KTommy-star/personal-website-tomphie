@@ -12,6 +12,73 @@ before(async () => {
 });
 after(async () => { await Promise.all([safari?.close(), chrome?.close()]); });
 
+test('phone glass highlights originate at the finger instead of the fixed desktop hover point', async () => {
+  for (const browser of [safari, chrome]) {
+    const page = await browser.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true });
+    await page.goto(url);
+    const panel = page.locator('.story-atlas'); await panel.scrollIntoViewIfNeeded();
+    const box = await panel.boundingBox();
+    await page.touchscreen.tap(box.x + box.width * .76, box.y + box.height * .35);
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+    const light = await panel.evaluate(e => ({ x: parseFloat(e.style.getPropertyValue('--pointer-x')), y: parseFloat(e.style.getPropertyValue('--pointer-y')) }));
+    assert(Math.abs(light.x - 76) < 2 && Math.abs(light.y - 35) < 2, `highlight follows the actual touch: ${JSON.stringify(light)}`);
+    await page.close();
+  }
+});
+
+test('a stationary phone tap does not start a continuous optical rendering loop', async () => {
+  const page = await safari.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true });
+  await page.goto(url);
+  const panel = page.locator('.story-atlas'); await panel.scrollIntoViewIfNeeded();
+  await panel.locator('.liquid-glass-rim').first().waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const box = await panel.boundingBox();
+  await page.touchscreen.tap(box.x + box.width * .76, box.y + box.height * .35);
+  const copies = await page.evaluate(async () => {
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    const original = CanvasRenderingContext2D.prototype.drawImage;
+    const scratch = document.querySelector('.landscape-glass-canvas'); let copies = 0;
+    CanvasRenderingContext2D.prototype.drawImage = function(source, ...args) { if (source === scratch) copies++; return original.call(this, source, ...args); };
+    for (let i = 0; i < 8; i++) await new Promise(requestAnimationFrame);
+    CanvasRenderingContext2D.prototype.drawImage = original;
+    return copies;
+  });
+  assert(copies <= 1, `no optical redraws after a stationary tap has ended: ${copies}`);
+  await page.close();
+});
+
+test('phone navigation ink settles with the material during a day-to-night transition', async () => {
+  for (const browser of [safari, chrome]) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: 'light' });
+    await page.goto(url);
+    await page.locator('[data-theme-toggle]').tap();
+    await page.waitForTimeout(1050);
+    const colors = await page.locator('.header-pane').evaluate(e => ({ ink: getComputedStyle(e.querySelector('.brand-link')).color, target: getComputedStyle(e.querySelector('[data-theme-toggle]')).color }));
+    assert.equal(colors.ink, colors.target, 'inherited navigation ink must not lag behind the finished glass/theme transition');
+    await page.close();
+  }
+});
+
+test('scrolling content behind the phone navigation adds separation without intercepting controls', async () => {
+  for (const browser of [safari, chrome]) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+    await page.goto(url);
+    assert.equal(await page.locator('html').getAttribute('data-scroll-edge'), null);
+    await page.locator('.route-card').first().scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => document.documentElement.hasAttribute('data-scroll-edge'), null, { timeout: 2000 });
+    const edge = await page.locator('.site-header').evaluate(e => {
+      const style = getComputedStyle(e, '::before');
+      return { visible: Number(style.opacity) > .9, transparentEnd: style.backgroundImage.includes('rgba(0, 0, 0, 0)'), receivesTouches: style.pointerEvents !== 'none' };
+    });
+    assert(edge.visible && edge.transparentEnd && !edge.receivesTouches, 'the soft scroll edge protects navigation without covering the controls');
+    await page.locator('.mobile-menu summary').tap();
+    await page.locator('.mobile-menu-pane').getByRole('link', { name: '科研', exact: true }).tap();
+    await page.waitForURL(location => /\/research\/?$/.test(location.pathname));
+    assert.equal(await page.locator('html').getAttribute('data-scroll-edge'), null, 'return to the top restores the clear scene');
+    await page.close();
+  }
+});
+
 test('phone menu links respond to touch and the selected item follows the inset rounded outline', async () => {
   for (const browser of [safari, chrome]) {
     const page = await browser.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true });
