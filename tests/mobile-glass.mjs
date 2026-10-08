@@ -209,6 +209,82 @@ test('WebKit optical strips bend real scene pixels and remain transparent toward
   await page.close();
 });
 
+test('WebKit suppresses stale sampled pixels during a delayed fast scroll, while ordinary scroll keeps the rim', async () => {
+  const page = await safari.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  try {
+    await page.goto(url);
+    const card = page.locator('.route-card').first(); await card.scrollIntoViewIfNeeded();
+    await card.locator('.liquid-glass-rim').first().waitFor();
+    await page.addStyleTag({ content: '.landscape{background:repeating-linear-gradient(#0c3b4b 0 160px,#d1e8cb 160px 320px)!important}.landscape-image,.landscape-light,.landscape-veil,.scene-sun,.scene-moon{visibility:hidden!important}.route-card{background:transparent!important;border-color:transparent!important;box-shadow:none!important}.route-card::before,.route-card::after,.route-card> :not(.liquid-glass-optics){visibility:hidden!important}' });
+    await page.evaluate(async () => {
+      const gl = document.querySelector('.landscape-glass-canvas').getContext('webgl');
+      const texture = document.createElement('canvas'); texture.width = 390; texture.height = 844;
+      const ctx = texture.getContext('2d');
+      for (let y = 0; y < 844; y++) { ctx.fillStyle = y % 320 < 160 ? '#0c3b4b' : '#d1e8cb'; ctx.fillRect(0, y, 390, 1); }
+      for (const slot of [gl.TEXTURE0, gl.TEXTURE1]) {
+        gl.activeTexture(slot); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture);
+      }
+      dispatchEvent(new Event('resize')); await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+      window.savedRAF = requestAnimationFrame;
+      window.requestAnimationFrame = () => 0;
+      scrollBy(0, 20);
+    });
+    await page.waitForTimeout(50);
+    const ordinary = await card.locator('.liquid-glass-optics').evaluate(e => Number(getComputedStyle(e).opacity));
+    assert(ordinary > .7, `ordinary frame-to-frame scroll retains the rim: ${ordinary}`);
+    await page.evaluate(() => scrollBy(0, 160));
+    await page.waitForTimeout(50);
+    const stale = await card.locator('.liquid-glass-optics').evaluate(e => Number(getComputedStyle(e).opacity));
+    const fixed = await page.locator('.header-pane .liquid-glass-optics').evaluate(e => Number(getComputedStyle(e).opacity));
+    assert(fixed > .7, 'fixed navigation samples remain valid and keep their optical rim');
+    const box = await card.boundingBox();
+    const clip = { x: Math.round(box.x + 2), y: Math.round(box.y + 32), width: 16, height: Math.min(100, Math.floor(box.height - 64)) };
+    const visible = (await page.screenshot({ clip })).toString('base64');
+    await card.locator('.liquid-glass-optics').evaluate(e => { e.style.visibility = 'hidden'; });
+    await page.waitForTimeout(50);
+    const clear = (await page.screenshot({ clip })).toString('base64');
+    const delta = await page.evaluate(async ([a, b]) => {
+      const pixels = async data => {
+        const image = new Image(); image.src = `data:image/png;base64,${data}`; await image.decode();
+        const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+        return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      };
+      const [shown, native] = await Promise.all([pixels(a), pixels(b)]);
+      let total = 0, count = 0;
+      for (let i = 0; i < shown.length; i++) if (i % 4 !== 3) { total += Math.abs(shown[i] - native[i]); count++; }
+      return total / count;
+    }, [visible, clear]);
+    assert(stale < .02 && delta < 1, `no stale world pixels remain carried by the card after 180px without a render: ${JSON.stringify({ stale, delta })}`);
+    await page.evaluate(() => { window.requestAnimationFrame = window.savedRAF; dispatchEvent(new Event('scroll')); });
+    await card.locator('.liquid-glass-optics').evaluate(e => { e.style.visibility = ''; });
+    await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.route-card .liquid-glass-optics')).opacity) > .7);
+  } finally { await page.close(); }
+});
+
+test('touch browsers without scroll timelines discard stale rims when their native scroll event arrives', async () => {
+  const page = await safari.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  try {
+    await page.addInitScript(() => {
+      const supports = CSS.supports.bind(CSS);
+      CSS.supports = (...args) => args[0] === 'animation-timeline' ? false : supports(...args);
+    });
+    await page.goto(url);
+    const card = page.locator('.route-card').first(); await card.scrollIntoViewIfNeeded();
+    await card.locator('.liquid-glass-rim').first().waitFor();
+    await page.evaluate(async () => {
+      await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+      window.savedRAF = requestAnimationFrame; window.requestAnimationFrame = () => 0;
+      scrollBy(0, 180);
+    });
+    await page.waitForTimeout(50);
+    const stale = await card.locator('.liquid-glass-optics').evaluate(e => Number(getComputedStyle(e).opacity));
+    assert(stale < .02, 'a delivered scroll event removes stale samples before waiting for the optical redraw');
+    await page.evaluate(() => { window.requestAnimationFrame = window.savedRAF; dispatchEvent(new Event('scroll')); });
+    await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.route-card .liquid-glass-optics')).opacity) > .7);
+  } finally { await page.close(); }
+});
+
 test('WebKit glass survives orientation and theme changes and restores native scenery on GPU loss', async () => {
   const page = await safari.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const errors = []; page.on('pageerror', e => errors.push(e.message));

@@ -1,4 +1,5 @@
 import { collectAssets, serializePublication, uuidPattern, validatePublication, publicationFingerprint, type Draft } from "./content.ts";
+import { getAssetType, MAX_PUBLICATION_ASSETS, MAX_PUBLICATION_ASSET_BYTES, validateAssetBytes } from "./assets.ts";
 
 export interface PublishEnv {
   SUPABASE_URL: string;
@@ -17,10 +18,26 @@ function base64(bytes: Uint8Array): string {
   for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
   return btoa(binary);
 }
-function isImage(bytes: Uint8Array, path: string): boolean {
-  if (path.endsWith(".webp")) return new TextDecoder().decode(bytes.subarray(0, 4)) === "RIFF" && new TextDecoder().decode(bytes.subarray(8, 12)) === "WEBP";
-  if (path.endsWith(".png")) return [137, 80, 78, 71, 13, 10, 26, 10].every((n, i) => bytes[i] === n);
-  return bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+async function boundedAssetBytes(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const tooLarge = () => new RequestError("附件超过单个文件限制或本篇文章附件总计 40 MB 的限制", 413);
+  if (Number(response.headers.get("content-length")) > maxBytes) throw tooLarge();
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
+  while (true) {
+    const { done, value } = await reader.read(); if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) { await reader.cancel(); throw tooLarge(); }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
+async function gitBlobSha(bytes: Uint8Array): Promise<string> {
+  const prefix = new TextEncoder().encode(`blob ${bytes.length}\0`); const content = new Uint8Array(prefix.length + bytes.length);
+  content.set(prefix); content.set(bytes, prefix.length);
+  const hash = await crypto.subtle.digest("SHA-1", content);
+  return [...new Uint8Array(hash)].map(value => value.toString(16).padStart(2, "0")).join("");
 }
 
 export async function handlePublishRequest(request: Request, env: PublishEnv, fetcher: typeof fetch = fetch): Promise<Response> {
@@ -74,20 +91,21 @@ export async function handlePublishRequest(request: Request, env: PublishEnv, fe
     let metadata: Record<string, unknown>;
     try { metadata = validatePublication(draft); }
     catch (error) { throw new RequestError(error instanceof Error ? error.message : "请检查文章内容"); }
+    const assets = collectAssets(draft);
+    if (assets.length > MAX_PUBLICATION_ASSETS || assets.some(path => !path.startsWith(`${user.id}/${draft.id}/`))) throw new RequestError("发布只允许本篇文章上传的附件，最多 20 个文件");
     const fingerprint = await publicationFingerprint(draft);
     if (draft.published_commit && (draft.published_fingerprint === fingerprint || (!draft.published_fingerprint && draft.published_revision === draft.revision))) {
       const url = new URL(`${draft.collection}/${draft.published_slug ?? draft.slug}/`, publicSite).href;
       return reply({ commit: draft.published_commit, url, duplicate: true, fingerprint });
     }
-    const assets = collectAssets(draft);
-    if (assets.length > 20 || assets.some(path => !path.startsWith(`${user.id}/${draft.id}/`))) throw new RequestError("发布只允许本篇文章上传的图片，最多 20 张");
     // Validate/download every approved asset before creating any public Git blob.
-    const pictures: { path: string; bytes: Uint8Array }[] = [];
+    const attachments: { path: string; bytes: Uint8Array }[] = []; let totalBytes = 0;
     for (const path of assets) {
       const response = await upstream(`${env.SUPABASE_URL}/storage/v1/object/authenticated/workbench-private/${path}`, { headers: userHeaders });
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.length > 2 * 1024 * 1024 || !isImage(bytes, path)) throw new RequestError("引用图片不符合格式或大小要求");
-      pictures.push({ path, bytes });
+      const bytes = await boundedAssetBytes(response, Math.min(getAssetType(path)!.maxBytes, MAX_PUBLICATION_ASSET_BYTES - totalBytes));
+      try { validateAssetBytes(bytes, path, response.headers.get("content-type") ?? ""); }
+      catch (error) { throw new RequestError(error instanceof Error ? error.message : "引用附件不符合格式要求"); }
+      totalBytes += bytes.length; attachments.push({ path, bytes });
     }
     const reservation = await fetcher(`${env.SUPABASE_URL}/rest/v1/rpc/reserve_workbench_publication`, { method: "POST", headers: userHeaders, body: JSON.stringify({ draft_id: draft.id, expected_revision: draft.revision }), signal: AbortSignal.timeout(15_000) });
     if (!reservation.ok) {
@@ -96,14 +114,26 @@ export async function handlePublishRequest(request: Request, env: PublishEnv, fe
     }
     const ref = await git("/git/ref/heads/main");
     const parent = await git(`/git/commits/${ref.object.sha}`);
+    const previousAssets = new Map<string, string>();
+    if (draft.published_commit && attachments.length) {
+      const previousTree = await git(`/git/trees/${parent.tree.sha}?recursive=1`);
+      if (!previousTree.truncated && Array.isArray(previousTree.tree)) {
+        for (const entry of previousTree.tree) if (entry.type === "blob" && typeof entry.path === "string" && entry.path.startsWith(`public/uploads/${draft.id}/`)) previousAssets.set(entry.path, entry.sha);
+      }
+    }
     const tree: { path: string; mode: string; type: string; sha: string }[] = [];
     const replacements: Record<string, string> = {};
-    for (const picture of pictures) {
-      const filename = picture.path.split("/").at(-1)!;
+    for (const attachment of attachments) {
+      const filename = attachment.path.split("/").at(-1)!;
       const path = `uploads/${draft.id}/${filename}`;
-      replacements[picture.path] = new URL(path, publicSite).href;
-      const blob = await git("/git/blobs", "POST", { content: base64(picture.bytes), encoding: "base64" });
-      tree.push({ path: `public/${path}`, mode: "100644", type: "blob", sha: blob.sha });
+      replacements[attachment.path] = new URL(path, publicSite).href;
+      let sha = previousAssets.get(`public/${path}`);
+      if (!sha || sha !== await gitBlobSha(attachment.bytes)) {
+        const blob = await git("/git/blobs", "POST", { content: base64(attachment.bytes), encoding: "base64" });
+        sha = blob.sha;
+      }
+      attachment.bytes = new Uint8Array();
+      tree.push({ path: `public/${path}`, mode: "100644", type: "blob", sha: sha! });
     }
     const timestamp = new Date().toISOString();
     const body = serializePublication(draft, timestamp, replacements);

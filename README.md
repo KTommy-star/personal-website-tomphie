@@ -4,7 +4,7 @@
 
 ## 技术组合
 
-- Node.js `>=22.12.0`，当前开发环境为 Node 24
+- Node.js `>=24.15.0`，与自动部署使用的 Node 24 保持一致
 - Astro `7.3.2`
 - Tailwind CSS `4.3.3`
 - TypeScript `6.0.3`

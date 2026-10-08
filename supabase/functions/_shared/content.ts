@@ -1,3 +1,5 @@
+import { getAssetType, isPrivateAssetReference } from "./assets.ts";
+export { uuidPattern, assetPattern } from "./assets.ts";
 export const collections = ["notes", "research", "projects"] as const;
 export type Collection = (typeof collections)[number];
 export interface Draft {
@@ -16,8 +18,6 @@ export interface Draft {
   published_fingerprint?: string | null;
   published_at?: string | null;
 }
-export const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-export const assetPattern = /^[a-f0-9-]{36}\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:webp|png|jpe?g)$/i;
 
 export function createDraft(collection: Collection): Draft {
   const id = crypto.randomUUID();
@@ -60,6 +60,8 @@ export function validatePublication(draft: Draft): Record<string, unknown> {
   };
   const cover = text("cover", false, 2000);
   if (cover && !cover.startsWith("asset://") && new URL(cover).protocol !== "https:") throw new Error("封面请上传图片或使用 HTTPS 地址");
+  if (cover?.startsWith("asset://") && (!isPrivateAssetReference(cover) || getAssetType(cover)?.kind !== "image")) throw new Error("封面仅支持上传的图片");
+  if (cover && ["document", "video"].includes(getAssetType(cover)?.kind ?? "")) throw new Error("封面仅支持图片");
   const metadata: Record<string, unknown> = { title: text("title", true, 160), summary: text("summary", true, 1000), tags: list("tags"), related: list("related") };
   if (cover) metadata.cover = cover;
   const publishedAt = date("publishedAt");
@@ -83,9 +85,9 @@ export function validatePublication(draft: Draft): Record<string, unknown> {
 
 export function collectAssets(draft: Pick<Draft, "body" | "metadata">): string[] {
   const text = `${draft.body}\n${typeof draft.metadata.cover === "string" ? draft.metadata.cover : ""}`;
-  return [...new Set((text.match(/asset:\/\/[^\s)\]"'<>]+/g) ?? []).map(ref => {
+  return [...new Set((text.match(/asset:\/\/[^\s)\]"'<>]*/g) ?? []).map(ref => {
     const path = ref.slice(8);
-    if (!assetPattern.test(path) || path.split("/").some(part => !uuidPattern.test(part.split(".")[0]))) throw new Error("图片引用格式不正确，请重新上传");
+    if (!isPrivateAssetReference(ref)) throw new Error("附件引用格式不正确，请重新上传");
     return path;
   }))];
 }

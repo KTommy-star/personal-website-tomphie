@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createHash, webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const service = vi.hoisted(() => ({ configured: true, restoreSession: vi.fn(), listDrafts: vi.fn(), saveDraft: vi.fn(), publishDraft: vi.fn(), getPublishStatus: vi.fn(), deleteDraft: vi.fn(), signOut: vi.fn() }));
+const service = vi.hoisted(() => ({ configured: true, restoreSession: vi.fn(), listDrafts: vi.fn(), saveDraft: vi.fn(), publishDraft: vi.fn(), getPublishStatus: vi.fn(), deleteDraft: vi.fn(), signOut: vi.fn(), uploadAttachment: vi.fn(), previewAsset: vi.fn() }));
 vi.mock("../src/lib/workbench-api", () => ({ createWorkbenchApi: () => service }));
 const id = "22222222-2222-4222-8222-222222222222";
 const commit = "a".repeat(40);
@@ -166,5 +166,30 @@ describe("workbench publication and deletion feedback", () => {
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("不会被撤下"));
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("无法再从工作台编辑"));
     expect(service.deleteDraft).toHaveBeenCalledWith(expect.objectContaining({ id }));
+  });
+  it("inserts an uploaded attachment at the selection and then saves its private reference", async () => {
+    await openDraft();
+    const reference = `asset://11111111-1111-4111-8111-111111111111/${id}/33333333-3333-4333-8333-333333333333.pdf`;
+    service.uploadAttachment.mockResolvedValue(reference);
+    service.previewAsset.mockResolvedValue("https://storage.example.com/private.pdf?token=temporary");
+    const body = document.getElementById("body") as HTMLTextAreaElement;
+    body.focus(); body.setSelectionRange(0, body.value.length);
+    document.querySelector<HTMLButtonElement>("[data-editor-menu]")!.click();
+    document.querySelector<HTMLDivElement>('.editor-command-option[data-editor-command="file"]')!.click();
+    const input = document.getElementById("attachment-file") as HTMLInputElement;
+    const file = new File(["%PDF-1.4"], "报告.pdf", { type: "application/pdf" });
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await flush();
+    expect(service.uploadAttachment).toHaveBeenCalledWith(id, file);
+    expect(body.value).toBe(`\n[报告.pdf](${reference})\n`);
+    button("save-draft").click(); await flush();
+    expect(service.saveDraft).toHaveBeenCalledWith(expect.objectContaining({ body: body.value }));
+    expect(body.value).not.toContain("token=");
+  });
+  it("warns explicitly that publishing referenced attachments makes them publicly downloadable", async () => {
+    await openDraft(); button("publish-draft").click(); await flush();
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("文档和视频公开"));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Git 历史"));
   });
 });

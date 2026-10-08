@@ -1,0 +1,31 @@
+.markdown-toolbar{align-items:center;gap:.25rem;margin-bottom:.75rem;padding:.375rem;border:1px solid var(--color-line);border-radius:.75rem;background:var(--color-surface)}
+.markdown-toolbar .editor-format-label{display:block;margin:0;flex:0 0 7rem}
+.markdown-toolbar .editor-format-select{height:44px;padding:.5rem 2rem .5rem .625rem;border:0;border-radius:.5rem;font-size:.875rem;background-color:transparent}
+.markdown-toolbar .editor-tool{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:44px;min-height:44px;padding:.375rem .5rem;border:0;border-radius:.5rem;background:transparent;font-size:.95rem;font-family:inherit;font-weight:500;line-height:1}
+.markdown-toolbar .editor-tool:hover{background:color-mix(in srgb,var(--color-path) 9%,var(--color-surface))}
+.markdown-toolbar [data-editor-command="bold"]{font-weight:750}
+.markdown-toolbar [data-editor-command="italic"]{font-style:italic;font-family:Georgia,serif}
+.markdown-toolbar [data-editor-command="strike"]{text-decoration:line-through}
+.markdown-toolbar .editor-tool-more{gap:.25rem;margin-left:auto;padding-inline:.625rem;font-size:.8rem;white-space:nowrap}
+.editor-command-menu{position:fixed;z-index:55;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--color-line);border-radius:.875rem;background:var(--color-surface);color:var(--color-ink);box-shadow:0 8px 32px rgb(8 28 39 / .15);font-size:.875rem;line-height:1.5;isolation:isolate}
+.editor-command-header{flex:none;padding:.75rem;border-bottom:1px solid var(--color-line);color:var(--color-quiet);font-size:.75rem;overflow-wrap:anywhere}
+.editor-command-menu .editor-command-search{display:block;width:100%;min-height:44px;padding:.5rem .625rem;border:1px solid var(--color-line);border-radius:.5rem;background:var(--color-paper);font-size:16px;color:var(--color-ink)}
+.editor-command-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:.375rem;scroll-padding-block:.375rem;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.editor-command-group{padding:.5rem .625rem .25rem;font-size:.7rem;color:var(--color-quiet)}
+.editor-command-option{display:flex;align-items:center;gap:.75rem;min-height:48px;padding:.5rem .625rem;border-radius:.5rem;cursor:pointer;touch-action:pan-y}
+.editor-command-option[aria-selected="true"]{background:color-mix(in srgb,var(--color-path) 11%,var(--color-surface));box-shadow:inset 2px 0 var(--color-path)}
+.editor-command-icon{display:flex;align-items:center;justify-content:center;width:2rem;height:2rem;flex:none;border:1px solid var(--color-line);border-radius:.375rem;color:var(--color-path);font-weight:600;font-size:.875rem}
+.editor-command-label{display:block;font-weight:500}
+.editor-command-option small{display:block;margin-top:.125rem;font-size:.7rem;color:var(--color-quiet)}
+.editor-command-footer{flex:none;padding:.5rem .75rem;border-top:1px solid var(--color-line);font-size:.65rem;color:var(--color-quiet)}
+.editor-command-empty{padding:.75rem .625rem;margin:0;color:var(--color-quiet);font-size:.8rem}
+.editor-command-menu[data-compact="true"] .editor-command-footer{display:none}
+.editor-command-menu[data-compact="true"] .editor-command-header{padding:.375rem .75rem}
+.editor-command-status{margin:0 0 .5rem;font-size:.8rem;color:var(--color-quiet)}
+.editor-command-status:empty{display:none}
+.editor-caret-mirror{position:fixed;visibility:hidden;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;border-style:solid;border-color:transparent;contain:layout style paint}
+.editor-sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:800px){.markdown-toolbar .editor-tool:is([data-editor-command="strike"],[data-editor-command="inline-code"],[data-editor-command="ordered-list"],[data-editor-command="task-list"],[data-editor-command="quote"]){display:none}}
+@media(prefers-reduced-motion:no-preference){.editor-command-option{transition:background-color 100ms ease}.markdown-toolbar .editor-tool{transition:background-color 100ms ease,transform 100ms ease}}
+@media(prefers-reduced-motion:reduce){.editor-command-option,.markdown-toolbar .editor-tool{transition:none}}
+@media(forced-colors:active){.editor-command-option[aria-selected="true"]{outline:2px solid Highlight;outline-offset:-2px}}

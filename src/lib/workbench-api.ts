@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Collection, Draft } from "./workbench-content";
+import { isPrivateAssetReference, uuidPattern, validateAssetBytes, validateAssetFilename } from "../../supabase/functions/_shared/assets";
 
 interface Config { url: string; key: string; username: string; email: string }
 export function createWorkbenchApi(config: Config) {
@@ -85,10 +86,24 @@ export function createWorkbenchApi(config: Config) {
       if (error) throw new Error("图片上传失败，请检查连接与私密存储配置");
       return `asset://${path}`;
     },
-    async previewAsset(reference: string) {
-      if (!reference.startsWith("asset://")) throw new Error("不是私密图片引用");
+    async uploadAttachment(draftId: string, file: File): Promise<string> {
+      if (!uuidPattern.test(draftId)) throw new Error("请先选择有效草稿");
+      const type = validateAssetFilename(file.name);
+      if (!file.size || file.size > type.maxBytes) throw new Error(`附件最大 ${type.maxBytes / (1024 * 1024)} MB`);
+      validateAssetBytes(new Uint8Array(await file.arrayBuffer()), file.name, file.type);
+      if (!ownerId) await verifyOwner();
+      const path = `${ownerId}/${draftId}/${crypto.randomUUID()}.${type.extension}`;
+      const { error } = await connection().storage.from("workbench-private").upload(path, file, { contentType: type.mimeType, upsert: false });
+      if (error) throw new Error("附件上传失败，请检查连接与私密存储配置");
+      return `asset://${path}`;
+    },
+    async previewAsset(reference: string, draftId?: string) {
+      if (!isPrivateAssetReference(reference)) throw new Error("不是有效私密附件引用");
+      if (draftId && (!uuidPattern.test(draftId) || reference.slice(8).split("/")[1] !== draftId)) throw new Error("只能预览本篇草稿上传的附件");
+      if (!ownerId) await verifyOwner();
+      if (!reference.slice(8).startsWith(`${ownerId}/`)) throw new Error("无权读取此私密附件");
       const { data, error } = await connection().storage.from("workbench-private").createSignedUrl(reference.slice(8), 600);
-      if (error || !data) throw new Error("私密图片预览暂时不可用");
+      if (error || !data) throw new Error("私密附件预览暂时不可用");
       return data.signedUrl;
     },
     async publishDraft(draft: Draft): Promise<{ commit: string; url: string; warning?: string; duplicate?: boolean; fingerprint?: string }> {

@@ -40,6 +40,21 @@ describe("workbench publication contracts", () => {
     const ref = "asset://11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333.webp";
     expect(collectAssets({ ...note(), metadata: { ...note().metadata, cover: ref }, body: `![图](${ref})\n![再一次](${ref})` })).toEqual([ref.slice(8)]);
     expect(() => collectAssets({ ...note(), body: "![图](asset://../../private)" })).toThrow();
+    expect(() => collectAssets({ ...note(), body: "[未上传](asset://)" })).toThrow();
+  });
+  it("collects document and video links alongside images and replaces them on publication", () => {
+    const path = "11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333.pdf";
+    const video = path.replace(".pdf", ".mp4");
+    const current = { ...note(), body: `[报告](asset://${path})\n[视频](asset://${video})` };
+    expect(collectAssets(current)).toEqual([path, video]);
+    const text = serializePublication(current, "2026-10-08T00:00:00Z", { [path]: "https://example.test/uploads/report.pdf", [video]: "https://example.test/uploads/video.mp4" });
+    expect(text).toContain("[报告](https://example.test/uploads/report.pdf)");
+    expect(text).not.toContain("asset://");
+  });
+  it("requires an image for the cover even when a document reference is valid", () => {
+    const cover = "asset://11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333.pdf";
+    expect(() => validatePublication({ ...note(), metadata: { ...note().metadata, cover } })).toThrow("封面");
+    expect(() => validatePublication({ ...note(), metadata: { ...note().metadata, cover: "https://example.test/report.pdf" } })).toThrow("封面");
   });
   it("keeps the original publication date when an article is updated", () => {
     const text = serializePublication({ ...note(), published_at: "2026-09-01T00:00:00Z" }, "2026-10-06T00:00:00Z");

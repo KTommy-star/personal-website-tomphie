@@ -9,7 +9,7 @@ const commit = "a".repeat(40);
 const image = `${owner}/${id}/33333333-3333-4333-8333-333333333333.webp`;
 const draft = { id, collection: "notes", slug: "first-note", metadata: { title: "真实记录", summary: "学习过程", topic: "AI", tags: [] }, body: "# 学习过程\n\n正文", revision: 3, published_commit: null };
 const request = (body: unknown, token = "user-token", origin = env.ALLOWED_ORIGINS) => new Request("https://project.supabase.co/functions/v1/publish-content", { method: "POST", headers: { "content-type": "application/json", origin, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
-const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: boolean; draft?: Record<string, unknown>; failRecord?: boolean; imageBytes?: Uint8Array; conclusion?: string; reservationConflict?: boolean } = {}) => {
+const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: boolean; draft?: Record<string, unknown>; failRecord?: boolean; imageBytes?: Uint8Array; assets?: Record<string, { bytes: Uint8Array; mime?: string }>; publishedAssets?: { path: string; type: string; sha: string }[]; conclusion?: string; reservationConflict?: boolean } = {}) => {
   const calls: { url: string; init: RequestInit }[] = [];
   const fetcher = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input); calls.push({ url, init });
@@ -21,11 +21,15 @@ const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: bool
       return new Response(null, { status: 204 });
     }
     if (url.includes("/rest/v1/workbench_drafts?")) return Response.json([{ ...draft, revision: options.revision ?? 3, ...options.draft }]);
-    if (url.includes("/storage/v1/object/authenticated/")) return new Response(options.imageBytes?.buffer as ArrayBuffer ?? new TextEncoder().encode("RIFF0000WEBP").buffer);
+    if (url.includes("/storage/v1/object/authenticated/")) {
+      const asset = options.assets?.[url.split("/workbench-private/")[1]];
+      return new Response((asset?.bytes ?? options.imageBytes ?? new TextEncoder().encode("RIFF0000WEBP")).buffer as ArrayBuffer, { headers: asset?.mime ? { "content-type": asset.mime } : {} });
+    }
     if (url.includes("/actions/runs?")) return Response.json({ workflow_runs: options.conclusion ? [{ path: ".github/workflows/deploy.yml", status: "completed", conclusion: options.conclusion, html_url: "https://github.com/fixture/actions/runs/1" }] : [] });
     if (options.failGit && url.includes("api.github.com")) return Response.json({ message: "permission denied" }, { status: 403 });
     if (url.endsWith("/git/ref/heads/main")) return Response.json({ object: { sha: "parent" } });
     if (url.endsWith("/git/commits/parent")) return Response.json({ tree: { sha: "old-tree" } });
+    if (url.endsWith("/git/trees/old-tree?recursive=1")) return Response.json({ tree: options.publishedAssets ?? [], truncated: false });
     if (url.endsWith("/git/blobs")) return Response.json({ sha: "blob" });
     if (url.endsWith("/git/trees")) return Response.json({ sha: "new-tree" });
     if (url.endsWith("/git/commits")) return Response.json({ sha: commit });
@@ -36,6 +40,68 @@ const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: bool
 };
 
 describe("owner-only publication boundary", () => {
+  it("publishes approved documents and videos in the same atomic tree as the article", async () => {
+    const pdf = image.replace(".webp", ".pdf"); const video = image.replace(".webp", ".mp4");
+    const io = fixture({ draft: { body: `[报告](asset://${pdf})\n[录像](asset://${video})` }, assets: {
+      [pdf]: { bytes: new TextEncoder().encode("%PDF-1.7\nfixture\n%%EOF"), mime: "application/pdf" },
+      [video]: { bytes: new Uint8Array([0, 0, 0, 20, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0, 109, 112, 52, 50]), mime: "video/mp4" },
+    } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(200);
+    const tree = JSON.parse(String(io.calls.find(c => c.url.endsWith("/git/trees"))!.init.body));
+    expect(tree.tree.map((entry: { path: string }) => entry.path)).toEqual([`public/uploads/${id}/33333333-3333-4333-8333-333333333333.pdf`, `public/uploads/${id}/33333333-3333-4333-8333-333333333333.mp4`, "src/content/notes/first-note.md"]);
+    const article = io.calls.filter(c => c.url.endsWith("/git/blobs")).at(-1)!;
+    expect(JSON.parse(String(article.init.body)).content).toContain("[报告](https://ktommy-star.github.io/personal-website-tomphie/uploads/");
+    expect(JSON.parse(String(article.init.body)).content).not.toContain("asset://");
+  });
+  it("validates every referenced attachment before writing any public blob", async () => {
+    const pdf = image.replace(".webp", ".pdf");
+    const io = fixture({ draft: { body: `![图片](asset://${image})\n[报告](asset://${pdf})` }, assets: { [pdf]: { bytes: new TextEncoder().encode("<html>disguised</html>"), mime: "application/pdf" } } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(400); expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("rejects a mismatched stored MIME type before public writes", async () => {
+    const pdf = image.replace(".webp", ".pdf");
+    const io = fixture({ draft: { body: `[报告](asset://${pdf})` }, assets: { [pdf]: { bytes: new TextEncoder().encode("%PDF-1.7\nfixture"), mime: "text/html" } } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(400); expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("stops when individually permitted videos exceed the article's aggregate budget", async () => {
+    const first = image.replace(".webp", ".mp4"); const second = first.replace("33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444");
+    const bytes = new Uint8Array(21 * 1024 * 1024); bytes.set([0, 0, 0, 20, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0, 109, 112, 52, 50]);
+    const io = fixture({ draft: { body: `[一](asset://${first})\n[二](asset://${second})` }, assets: { [first]: { bytes, mime: "video/mp4" }, [second]: { bytes, mime: "video/mp4" } } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(413); expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("refuses another owner's document without requesting its private bytes", async () => {
+    const other = image.replace(owner, "44444444-4444-4444-8444-444444444444").replace(".webp", ".pdf");
+    const io = fixture({ draft: { body: `[报告](asset://${other})` } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(400); expect(io.calls.some(c => c.url.includes("/storage/") || c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("rejects too many referenced attachments before downloading them", async () => {
+    const links = Array.from({ length: 21 }, (_, index) => `[报告](asset://${owner}/${id}/00000000-0000-4000-8000-${String(index).padStart(12, "0")}.pdf)`).join("\n");
+    const io = fixture({ draft: { body: links } });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(400); expect(io.calls.some(c => c.url.includes("/storage/") || c.url.includes("api.github.com"))).toBe(false);
+  });
+  it("reuses an existing matching public asset blob when only article text changes", async () => {
+    const pdf = image.replace(".webp", ".pdf"); const bytes = new TextEncoder().encode("%PDF-1.7\nfixture\n%%EOF");
+    const sha = createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+    const path = `public/uploads/${id}/33333333-3333-4333-8333-333333333333.pdf`;
+    const io = fixture({ draft: { body: `[更新后的报告](asset://${pdf})`, published_commit: commit, published_slug: "first-note", published_collection: "notes", published_fingerprint: "old" }, assets: { [pdf]: { bytes, mime: "application/pdf" } }, publishedAssets: [{ path, type: "blob", sha }] });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(200);
+    expect(io.calls.filter(c => c.url.endsWith("/git/blobs"))).toHaveLength(1);
+    const tree = JSON.parse(String(io.calls.find(c => c.url.endsWith("/git/trees"))!.init.body));
+    expect(tree.tree[0]).toMatchObject({ path, sha });
+  });
+  it("uploads changed asset bytes rather than reusing a different public blob", async () => {
+    const pdf = image.replace(".webp", ".pdf"); const bytes = new TextEncoder().encode("%PDF-1.7\nchanged\n%%EOF");
+    const io = fixture({ draft: { body: `[报告](asset://${pdf})`, published_commit: commit, published_slug: "first-note", published_collection: "notes", published_fingerprint: "old" }, assets: { [pdf]: { bytes, mime: "application/pdf" } }, publishedAssets: [{ path: `public/uploads/${id}/33333333-3333-4333-8333-333333333333.pdf`, type: "blob", sha: "b".repeat(40) }] });
+    const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(res.status).toBe(200); expect(io.calls.filter(c => c.url.endsWith("/git/blobs"))).toHaveLength(2);
+  });
   it("recognizes an unchanged legacy publication without a stored fingerprint", async () => {
     const io = fixture({ draft: { published_commit: commit, published_revision: 3, published_slug: "first-note", published_collection: "notes" } });
     const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);

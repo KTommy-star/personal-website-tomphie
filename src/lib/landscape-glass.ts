@@ -4,6 +4,7 @@ import { renderLensMap } from "../vendor/liquid-glass.js";
 
 export type LandscapeLens = {
   key: HTMLElement;
+  scrolls: boolean;
   x: number; y: number; width: number; height: number;
   mapWidth: number; mapHeight: number; radius: number; bend: number; bezel: number; specular: number;
 };
@@ -108,7 +109,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   };
   type Strip = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; x: number; y: number; width: number; height: number; row: number };
-  const maps = new Map<HTMLElement, { shape: string; texture: WebGLTexture; optics: HTMLElement; strips: Strip[] }>();
+  const maps = new Map<HTMLElement, { shape: string; texture: WebGLTexture; optics: HTMLElement; strips: Strip[]; scrolls: boolean; sampledScroll: number; opacity: number }>();
   let size = "";
   let dayTexture: WebGLTexture | undefined;
   let nightTexture: WebGLTexture | undefined;
@@ -118,6 +119,15 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
   // One compact readback for ALL visible rims, not four viewport readbacks/card.
   const staging = document.createElement("canvas");
   const stagingContext = staging.getContext("2d", { willReadFrequently: true })!;
+  const touch = matchMedia("(pointer: coarse)").matches;
+  const scrollTimeline = touch && CSS.supports("animation-timeline", "scroll(root block)") && CSS.supports("animation-range", "-72px 72px");
+  const freshness = scrollTimeline ? document.createElement("style") : null;
+  if (freshness) {
+    // Native scroll can outrun a sampled canvas: fade old pixels on the compositor.
+    freshness.textContent = `@keyframes tomphie-glass-sampling { 0%,100% { opacity:0 } 33.333333%,66.666667% { opacity:var(--glass-sample-opacity) } }
+      .liquid-glass-optics[data-scroll-sampling] { animation:tomphie-glass-sampling linear both; animation-duration:auto; animation-timeline:scroll(root block) }`;
+    landscape.append(freshness);
+  }
 
   // Bake only our two authored pictures, wash and celestial decorations on resize.
   // No DOM screenshots, no per-frame image uploads, no network/cross-origin content.
@@ -203,7 +213,9 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
               return { canvas: strip, context: strip.getContext("2d")!, x, y, width: sw, height: sh, row: 0 };
             });
           lens.key.prepend(optics);
-          map = { shape, texture: texture(pixels), optics, strips }; maps.set(lens.key, map);
+          const opacity = Number(getComputedStyle(optics).opacity);
+          optics.style.setProperty("--glass-sample-opacity", String(opacity));
+          map = { shape, texture: texture(pixels), optics, strips, scrolls: lens.scrolls, sampledScroll: scrollY, opacity }; maps.set(lens.key, map);
         }
         for (const strip of map.strips) {
           strip.row = atlasHeight;
@@ -239,8 +251,22 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
             strip.context.resetTransform();
           } else strip.context.drawImage(staging, 0, strip.row, strip.width, strip.height, 0, 0, strip.width, strip.height);
         }
+        map.sampledScroll = scrollY;
+        map.optics.style.opacity = "";
+        if (scrollTimeline && map.scrolls) {
+          map.optics.dataset.scrollSampling = "true";
+          // Full strength through 24px of lag, gone by 72px; no idle redraw loop.
+          map.optics.style.animationRange = `${map.sampledScroll - 72}px ${map.sampledScroll + 72}px`;
+        }
       }
       if (landscape.dataset.glassScene !== "refractive") landscape.dataset.glassScene = "refractive";
+    },
+    invalidateScroll() {
+      if (!touch || scrollTimeline || stopped || !enabled) return;
+      for (const map of maps.values()) if (map.scrolls) {
+        const lag = Math.abs(scrollY - map.sampledScroll);
+        map.optics.style.opacity = String(map.opacity * Math.min(1, Math.max(0, (72 - lag) / 48)));
+      }
     },
     setEnabled(value: boolean) {
       enabled = value;
@@ -250,6 +276,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
       stopped = true;
       delete landscape.dataset.glassScene;
       canvas.remove();
+      freshness?.remove();
       for (const map of maps.values()) { gl.deleteTexture(map.texture); map.optics.remove(); }
       if (dayTexture) gl.deleteTexture(dayTexture);
       if (nightTexture) gl.deleteTexture(nightTexture);

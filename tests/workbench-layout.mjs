@@ -15,6 +15,13 @@ async function settleView(page, selector) {
   }, selector);
 }
 
+async function browseWebsite(page) {
+  // Focusing a long body naturally scrolls and compacts the shared chrome.
+  await settleView(page, '.workspace-controls');
+  if (!(await page.getByRole('link', { name: '浏览网站', exact: true }).isVisible())) await page.locator('#workbench-more').click();
+  await page.getByRole('link', { name: '浏览网站', exact: true }).click();
+}
+
 async function workbench(width, options = {}) {
   const page = await browser.newPage({ viewport: { width, height: options.height ?? 960 }, colorScheme: options.theme ?? 'light', reducedMotion: options.reduced ? 'reduce' : 'no-preference', ...(options.userAgent ? { userAgent: options.userAgent } : {}) });
   // Exercise the WebKit renderer in Chromium; this is not an iPhone hardware test.
@@ -102,7 +109,7 @@ test('shared mode navigation saves writing and keeps the theme and session in bo
   const { page, draft, saves } = await workbench(1440);
   await page.locator('[data-theme-toggle]').click();
   await page.locator('#body').fill('切换之前的新正文');
-  await page.getByRole('link', { name: '浏览网站', exact: true }).click();
+  await browseWebsite(page);
   await page.waitForURL(base);
   assert.equal(draft().body, '切换之前的新正文'); assert(saves() >= 1);
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
@@ -147,7 +154,7 @@ test('discarding an unsaved draft asks once when switching back to the website',
   const dialogs = [];
   page.on('dialog', async dialog => { dialogs.push(dialog.type()); await dialog.accept(); });
   await page.locator('#body').fill('明确放弃的测试正文');
-  await page.getByRole('link', { name: '浏览网站', exact: true }).click();
+  await browseWebsite(page);
   await page.waitForURL(base);
   assert.deepEqual(dialogs, ['confirm'], 'do not ask again with a native unload prompt after explicit confirmation');
   await page.close();

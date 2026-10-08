@@ -10,7 +10,7 @@ const contrast = matchMedia("(prefers-contrast: more)");
 const transparency = matchMedia("(prefers-reduced-transparency: reduce)");
 const disabled = () => contrast.matches || transparency.matches;
 const touch = matchMedia("(pointer: coarse)").matches;
-const bezelWidth = touch ? 10 : 24;
+const bezelWidth = touch ? 12 : 24;
 const specular = touch ? .24 : .42;
 
 if (landscape) {
@@ -26,6 +26,7 @@ if (landscape) {
     lens?: Lens;
     visible: boolean;
     bend: number;
+    bezel: number;
   };
   const surfaces: Surface[] = [];
   let frame = 0;
@@ -62,8 +63,8 @@ if (landscape) {
       if (!width || !height) continue;
       const { element, source, scene } = surface;
       if (surface.gpu && rect) {
-        lenses.push({ key: element, x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-          mapWidth: width, mapHeight: height, radius, bezel: bezelWidth, specular,
+        lenses.push({ key: element, scrolls: !element.closest(".site-header, .workbench-header"), x: rect.left, y: rect.top, width: rect.width, height: rect.height,
+          mapWidth: width, mapHeight: height, radius, bezel: surface.bezel, specular,
           bend: surface.bend * (element.hasAttribute("data-glass-pressed") ? 1.18 : 1) });
         if (renderer && element.dataset.glass !== "refractive") element.dataset.glass = "refractive";
         continue;
@@ -73,7 +74,7 @@ if (landscape) {
         if (scene.style.height !== sceneHeight) scene.style.height = sceneHeight;
         if (scene.style.transform !== sceneTransform) scene.style.transform = sceneTransform;
       }
-      const bezel = Math.min(touch ? bezelWidth : 28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
+      const bezel = Math.min(touch ? surface.bezel : 28, Math.min(width, height) * .32) / (Math.min(width, height) / 2);
       if (!surface.lens) {
         surface.lens = createGlass(source, {
           mode: surface.native ? "backdrop" : "content",
@@ -145,7 +146,8 @@ if (landscape) {
     }
     const surface: Surface = {
       element, source, portrait, scene, native, gpu, scrolls: gpu, visible: false,
-      bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 9 : 12)
+      bezel: touch && element.matches(".header-pane, .mobile-menu-pane") ? 10 : bezelWidth,
+      bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 11 : 15)
         : element.matches(".header-pane, .mobile-menu-pane, .portrait-caption, .journey-filters") ? 16 : 21,
     };
     surfaces.push(surface);
@@ -214,6 +216,7 @@ if (landscape) {
   window.addEventListener("pageshow", updateScrollEdge);
   window.addEventListener("scroll", () => {
     updateScrollEdge();
+    renderer?.invalidateScroll();
     // Native lenses need no JS coordinates, style writes or alignment RAF on scroll.
     if (surfaces.some(surface => surface.visible && surface.scrolls)) requestUpdate();
   }, { passive: true });

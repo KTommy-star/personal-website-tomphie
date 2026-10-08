@@ -4,6 +4,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { withBase } from "../../lib/paths";
 import type { Collection } from "../../lib/workbench-content";
 import "../../styles/content.css";
+import "../../styles/attachments.css";
 import "katex/dist/katex.min.css";
 interface Props { entry: CollectionEntry<Collection>; collection: Collection }
 const { entry, collection } = Astro.props;
@@ -40,3 +41,4 @@ const links = (extra.links ?? []) as { label: string; url: string }[];
     </div>
   </article>
 </BaseLayout>
+<script>import "../../scripts/attachments";</script>

@@ -54,4 +54,22 @@ describe("workbench preview", () => {
     expect(link.target).toBe("_blank");
     expect(link.rel).toContain("noopener");
   });
+  it("resolves private document and video links without writing the signed URL into Markdown", async () => {
+    const prefix = 'asset://11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333';
+    const source = `[报告.pdf](${prefix}.pdf)\n\n[演示.mp4](${prefix}.mp4)`;
+    const root = document.createElement("div");
+    root.innerHTML = await renderWorkbenchPreview(source, async reference => `https://storage.example.com/${reference.split('/').at(-1)}?token=temporary`);
+    const links = Array.from(root.querySelectorAll("a"));
+    expect(links).toHaveLength(2);
+    expect(links[0].getAttribute("href")).toContain(".pdf?token=");
+    expect(links[1].dataset.attachmentReference).toBe(`${prefix}.mp4`);
+    expect(source).not.toContain("token=");
+    expect(root.querySelector("iframe,video,object")).toBeNull();
+  });
+  it("does not turn a document reference into an executable image", async () => {
+    const reference = 'asset://11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333.pdf';
+    const root = document.createElement("div");
+    root.innerHTML = await renderWorkbenchPreview(`![误用](${reference})`, async () => 'https://storage.example.com/file.pdf');
+    expect(root.querySelector("img")?.getAttribute("src")).toBeNull();
+  });
 });

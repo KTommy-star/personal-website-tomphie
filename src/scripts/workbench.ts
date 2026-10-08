@@ -1,8 +1,11 @@
 import { createWorkbenchApi } from "../lib/workbench-api";
 import { createDraft, publicationFingerprint, type Collection, type Draft } from "../lib/workbench-content";
-import { renderWorkbenchPreview } from "../lib/workbench-preview";
 import { animate } from "motion";
 import { initWorkbenchChrome } from "./workbench-chrome";
+import { initMarkdownEditor } from "./workbench-editor";
+import { initAttachmentLinks } from "./attachments";
+import { attachmentMarkdown, decorateAttachmentLinks } from "../lib/attachment-links";
+import { validateAssetFilename } from "../../supabase/functions/_shared/assets";
 
 const root = document.querySelector<HTMLElement>("[data-workbench]")!;
 const api = createWorkbenchApi({ url: root.dataset.url ?? "", key: root.dataset.key ?? "", username: root.dataset.username ?? "", email: root.dataset.email ?? "" });
@@ -36,7 +39,12 @@ let leaving = false;
 let previewGeneration = 0;
 let publishGeneration = 0;
 const assetCache = new Map<string, { url: string; expires: number }>();
+const assetRequests = new Map<string, Promise<string>>();
 const publicationWarnings = new Map<string, string>();
+let previewModule: Promise<typeof import("../lib/workbench-preview")> | undefined;
+let renderedSource = "";
+let renderedHTML = "";
+let renderedAt = 0;
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "操作未完成，请稍后重试。";
@@ -99,6 +107,7 @@ function renderDirectory() {
 }
 
 function selectDraft(draft: Draft) {
+  markdownEditor.close();
   clearTimeout(saveTimer);
   deploying = false;
   checkingPublication = false;
@@ -240,20 +249,37 @@ async function loadDirectory() {
 }
 
 async function signedAsset(reference: string) {
+  if (!current || reference.slice(8).split("/")[1] !== current.id) throw new Error("附件不属于当前草稿");
+  const draftId = current.id;
   const cached = assetCache.get(reference);
   if (cached && cached.expires > Date.now()) return cached.url;
-  const url = await api.previewAsset(reference);
-  assetCache.set(reference, { url, expires: Date.now() + 30_000 });
-  return url;
+  const pending = assetRequests.get(reference);
+  if (pending) return pending;
+  const request = api.previewAsset(reference, draftId).then(url => {
+    if (current?.id !== draftId) throw new Error("已离开当前草稿");
+    assetCache.set(reference, { url, expires: Date.now() + 480_000 });
+    return url;
+  }).finally(() => { assetRequests.delete(reference); });
+  assetRequests.set(reference, request);
+  return request;
 }
 
 async function refreshPreview() {
   const generation = ++previewGeneration;
   if (!current) return;
+  if (window.matchMedia?.("(max-width: 800px)").matches && document.querySelector<HTMLElement>(".workbench-grid")!.dataset.view !== "preview") return;
   const snapshot = structuredClone(current);
   try {
     const cover = String(snapshot.metadata.cover || "").replace(/[<>\r\n]/g, "");
-    const html = await renderWorkbenchPreview(`${cover ? `![封面](<${cover}>)\n\n` : ""}${snapshot.body}`, signedAsset);
+    const source = `${cover ? `![封面](<${cover}>)\n\n` : ""}${snapshot.body}`;
+    let html = renderedHTML;
+    if (source !== renderedSource || Date.now() - renderedAt > 480_000) {
+      previewModule ??= import("../lib/workbench-preview");
+      const { renderWorkbenchPreview } = await previewModule;
+      html = await renderWorkbenchPreview(source, signedAsset);
+      if (generation !== previewGeneration || current?.id !== snapshot.id) return;
+      renderedSource = source; renderedHTML = html; renderedAt = Date.now();
+    }
     if (generation !== previewGeneration || current?.id !== snapshot.id) return;
     const preview = element("preview");
     const title = document.createElement("h1");
@@ -264,6 +290,7 @@ async function refreshPreview() {
     const content = document.createElement("div");
     content.innerHTML = html;
     preview.replaceChildren(title, summary, content);
+    decorateAttachmentLinks(preview);
   } catch (error) {
     if (generation === previewGeneration) errorBox.textContent = `预览未更新：${message(error)}`;
   }
@@ -271,25 +298,17 @@ async function refreshPreview() {
 
 let viewAnimation: ReturnType<typeof animate> | undefined;
 function showView(view: string) {
+  markdownEditor.close();
   const grid = document.querySelector<HTMLElement>(".workbench-grid")!;
   const previous = grid.dataset.view;
   viewAnimation?.cancel();
   grid.dataset.view = view;
+  if (view === "preview") void refreshPreview();
   document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach(button => { if (button.tagName === "BUTTON") button.setAttribute("aria-pressed", String(button.dataset.view === view)); });
   if (previous !== view && window.matchMedia?.("(max-width: 800px) and (prefers-reduced-motion: no-preference)").matches) {
     const panel = grid.querySelector<HTMLElement>(`.${view}-panel`);
     if (panel) viewAnimation = animate(panel, { opacity: [0, 1], y: [4, 0] }, { duration: .18, ease: [.22, 1, .36, 1] });
   }
-}
-
-function insertText(before: string, after = "", placeholder = "文字") {
-  const start = body.selectionStart;
-  const end = body.selectionEnd;
-  const text = body.value.slice(start, end) || placeholder;
-  body.setRangeText(before + text + after, start, end, "end");
-  body.focus();
-  body.setSelectionRange(start + before.length, start + before.length + text.length);
-  changed();
 }
 
 async function encodeImage(file: File): Promise<Blob> {
@@ -357,12 +376,45 @@ element<HTMLInputElement>("image-file").addEventListener("change", async event =
   finally { uploading = false; element<HTMLInputElement>("cover").readOnly = false; updateButtons(); }
 });
 
-element<HTMLButtonElement>("upload-body").addEventListener("click", () => chooseImage("body"));
 element<HTMLButtonElement>("upload-cover").addEventListener("click", () => chooseImage("cover"));
-document.querySelectorAll<HTMLButtonElement>("[data-format]").forEach(button => button.addEventListener("click", () => {
-  const formats: Record<string, [string, string, string]> = { heading: ["\n## ", "\n", "标题"], bold: ["**", "**", "重点"], list: ["\n- ", "\n", "列表项"], quote: ["\n> ", "\n", "引用"], code: ["\n```\n", "\n```\n", "代码"], link: ["[", "](https://example.com)", "链接文字"], math: ["$", "$", "x^2"] };
-  insertText(...formats[button.dataset.format!]);
-}));
+let attachmentSelection = { start: 0, end: 0 };
+let attachmentBody = "";
+function chooseAttachment(kind: "file" | "video") {
+  if (!current || uploading || publishing || deleting) return;
+  attachmentSelection = { start: body.selectionStart, end: body.selectionEnd };
+  attachmentBody = body.value;
+  const input = element<HTMLInputElement>("attachment-file");
+  input.accept = kind === "video" ? ".mp4,.webm,.mov" : ".pdf,.docx,.doc,.xlsx,.xls,.csv,.pptx,.ppt,.mp4,.webm,.mov";
+  input.click();
+}
+element<HTMLInputElement>("attachment-file").addEventListener("change", async event => {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0]; input.value = "";
+  if (!file || !current || uploading || publishing || deleting) return;
+  const id = current.id;
+  const selection = attachmentSelection;
+  const originalBody = attachmentBody;
+  uploading = true; updateButtons(); errorBox.textContent = "";
+  status.textContent = "正在准备私密附件…";
+  try {
+    const type = validateAssetFilename(file.name);
+    if (!file.size || file.size > type.maxBytes) throw new Error(`此附件需小于 ${type.maxBytes / 1024 / 1024} MB`);
+    if (!current.revision && edited === saved) edited++;
+    await saveChanges();
+    if (edited !== saved || conflict) throw new Error("草稿尚未保存成功，附件没有上传");
+    status.textContent = `正在上传私密附件：${file.name}…`;
+    const reference = await api.uploadAttachment(id, file);
+    if (current?.id !== id) return;
+    const text = `\n${attachmentMarkdown(file.name, reference)}\n`;
+    if (body.value.length - (body.value === originalBody ? selection.end - selection.start : 0) + text.length > body.maxLength) throw new Error("正文已达到长度上限，请精简后再插入附件");
+    if (body.value === originalBody) body.setRangeText(text, selection.start, selection.end, "end");
+    else body.value += text;
+    changed(); body.focus();
+  } catch (error) { errorBox.textContent = message(error); status.textContent = edited === saved ? "附件未插入，草稿已保存" : "附件未插入，修改尚未保存"; }
+  finally { uploading = false; updateButtons(); }
+});
+const markdownEditor = initMarkdownEditor({ textarea: body, toolbar: document.querySelector<HTMLElement>(".markdown-toolbar")!, onImage: () => chooseImage("body"), onAttachment: chooseAttachment });
+initAttachmentLinks(element("preview"), signedAsset);
 document.querySelectorAll<HTMLButtonElement>(".mobile-tabs button").forEach(button => button.addEventListener("click", () => showView(button.dataset.view!)));
 form.addEventListener("input", changed);
 form.addEventListener("submit", event => { event.preventDefault(); void saveChanges(); });
@@ -523,7 +575,7 @@ publishButton.addEventListener("click", async () => {
   if (!form.reportValidity()) return;
   const links = current.metadata.links as { label: string; url: string }[] | undefined;
   if (links?.some(link => !link.label || !/^https?:\/\//i.test(link.url))) { errorBox.textContent = "请检查相关链接，每行填写：名称 | https://地址。"; showView("editor"); return; }
-  if (!window.confirm("发布会把这篇正文、填写的信息及引用图片公开到网站和公开仓库。确认这些内容都可以公开？")) return;
+  if (!window.confirm("发布会把这篇正文、填写的信息及引用的图片、文档和视频公开到网站与公开 GitHub 仓库，访客可以预览、下载。删除草稿不会删除公开文件或 Git 历史。确认这些内容都可以公开，且不包含私人简历或敏感信息？")) return;
   const previousPublicationState = element("publish-status").dataset.state ?? "";
   publishing = true;
   element("publish-status").dataset.state = "pending";
@@ -631,6 +683,9 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
     element("publish-warning").hidden = true;
     element("published-link").hidden = true;
     assetCache.clear();
+    assetRequests.clear();
+    renderedSource = renderedHTML = ""; renderedAt = 0;
+    markdownEditor.close();
     publicationWarnings.clear();
     previewGeneration++;
     publishGeneration++;
