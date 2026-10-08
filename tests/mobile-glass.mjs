@@ -252,3 +252,80 @@ test('Android glass preserves native backdrop refraction, touch feedback and day
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.close();
 });
+
+test('phone glass centers preserve background detail instead of inheriting an opaque section wash', async () => {
+  const android = 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Mobile Safari/537.36';
+  for (const browser of [safari, chrome]) for (const theme of ['light', 'dark']) {
+    const page = await browser.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true,
+      reducedMotion: 'reduce', colorScheme: theme, ...(browser === chrome ? { userAgent: android } : {}) });
+    try {
+      await page.goto(url);
+      // Replace only this test's wallpaper with known detail. The section wash,
+      // glass face and optics remain intact: declarations alone cannot pass.
+      await page.addStyleTag({ content: '.landscape{background:repeating-linear-gradient(90deg,#284b61 0 8px,#c5e3ea 8px 16px)!important}.landscape-image,.landscape-light,.landscape-veil,.scene-sun,.scene-moon{visibility:hidden!important}.glass> :not(.liquid-glass-optics){visibility:hidden!important}' });
+      for (const selector of ['.story-atlas', '.focus-lens', '.route-card']) {
+        const panel = page.locator(selector).first(); await panel.scrollIntoViewIfNeeded();
+        await page.waitForFunction(s => document.querySelector(s)?.dataset.glass === 'refractive', selector);
+        const box = await panel.boundingBox();
+        const png = (await page.screenshot({ clip: { x: Math.round(box.x + box.width / 2 - 32), y: Math.round(box.y + box.height / 2), width: 64, height: 8 } })).toString('base64');
+        const contrast = await page.evaluate(async data => {
+          const image = new Image(); image.src = `data:image/png;base64,${data}`; await image.decode();
+          const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+          const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+          const pixels = ctx.getImageData(0, 0, canvas.width, 1).data;
+          const reds = [...pixels].filter((_, i) => i % 4 === 0);
+          return Math.max(...reds) - Math.min(...reds);
+        }, png);
+        assert(contrast >= 157 * .8, `${browser === safari ? 'WebKit' : 'Android Chrome'} ${theme} ${selector}: preserve at least 80% of the wallpaper detail, got ${contrast / 157}`);
+      }
+    } finally { await page.close(); }
+  }
+});
+
+test('phone glass does not expose a differently coated picture frame on a uniform background', async () => {
+  const page = await safari.newPage({ viewport: { width: 440, height: 956 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  try {
+    await page.goto(url);
+    const card = page.locator('.route-card').first(); await card.scrollIntoViewIfNeeded();
+    await card.locator('.liquid-glass-rim').first().waitFor();
+    await page.addStyleTag({ content: '.landscape{background:#607f87!important}.landscape-image,.landscape-light,.landscape-veil,.scene-sun,.scene-moon{visibility:hidden!important}.route-card> :not(.liquid-glass-optics){visibility:hidden!important}' });
+    await page.evaluate(async () => {
+      const gl = document.querySelector('.landscape-glass-canvas').getContext('webgl');
+      const texture = document.createElement('canvas'); texture.width = texture.height = 2;
+      const ctx = texture.getContext('2d'); ctx.fillStyle = '#607f87'; ctx.fillRect(0, 0, 2, 2);
+      for (const slot of [gl.TEXTURE0, gl.TEXTURE1]) {
+        gl.activeTexture(slot); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture);
+      }
+      dispatchEvent(new Event('resize')); await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    });
+    const box = await card.boundingBox();
+    const png = (await page.screenshot({ clip: { x: Math.round(box.x), y: Math.round(box.y + box.height / 2), width: 48, height: 8 } })).toString('base64');
+    const seam = await page.evaluate(async data => {
+      const image = new Image(); image.src = `data:image/png;base64,${data}`; await image.decode();
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+      const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
+      const pixels = ctx.getImageData(0, 0, canvas.width, 1).data;
+      let delta = 0;
+      for (let x = 4; x <= 10; x++) for (let c = 0; c < 3; c++) delta += Math.abs(pixels[x * 4 + c] - pixels[32 * 4 + c]);
+      return delta / 21;
+    }, png);
+    assert(seam < 12, `flat scene stays coherent between edge and face instead of a broad dark/bright frame: ${seam}`);
+  } finally { await page.close(); }
+});
+
+test('clear phone stages still become solid when higher contrast is requested', async () => {
+  const page = await safari.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  try {
+    await page.goto(url);
+    await page.emulateMedia({ contrast: 'more' });
+    for (const selector of ['.story-section', '.focus-section', '.route-index']) {
+      const colors = await page.locator(selector).evaluate(e => {
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.fillStyle = getComputedStyle(e).backgroundColor; ctx.fillRect(0, 0, 1, 1);
+        return { alpha: ctx.getImageData(0, 0, 1, 1).data[3], face: getComputedStyle(e.querySelector('.glass')).backdropFilter };
+      });
+      assert.equal(colors.alpha, 255, `${selector}: restore a readable opaque stage`);
+      assert.equal(colors.face, 'none', 'optical detail is optional, readable controls are not');
+    }
+  } finally { await page.close(); }
+});
