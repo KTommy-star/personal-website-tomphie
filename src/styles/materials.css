@@ -40,6 +40,8 @@
 .liquid-glass-refraction { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .liquid-glass-scenery { position: absolute !important; inset: auto !important; left: 0 !important; top: 0 !important; z-index: 0 !important; max-width: none; pointer-events: none; transform-origin: top left; }
 .portrait-caption .liquid-glass-optics { opacity: .62; }
+.liquid-glass-optics[data-glass-rims] { inset: -1px; opacity: 1; }
+.liquid-glass-rim { position: absolute; pointer-events: none; }
 .glass { transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease, box-shadow 700ms ease; }
 @supports not (backdrop-filter: blur(1px)) { :root body .glass { background: var(--color-surface); color: var(--color-ink); } }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {

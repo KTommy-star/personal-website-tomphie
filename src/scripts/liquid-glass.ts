@@ -2,7 +2,8 @@ import { createGlass, engine } from "../vendor/liquid-glass.js";
 import type { createLandscapeGlass, LandscapeLens } from "../lib/landscape-glass";
 
 // Use native backdrop refraction where supported, so compositor scrolling owns
-// the background alignment. WebKit/Gecko share one GPU background and rim pass.
+// the background alignment. WebKit/Gecko share one GPU sampler, but carry their
+// optical rims in the card's own compositor layer rather than the wallpaper.
 const landscape = document.querySelector<HTMLElement>("body > .landscape");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 const contrast = matchMedia("(prefers-contrast: more)");
@@ -203,6 +204,7 @@ if (landscape) {
   window.addEventListener("resize", requestGeometry, { passive: true });
   // Mobile Safari's visible viewport changes when the address bar collapses.
   window.visualViewport?.addEventListener("resize", requestGeometry, { passive: true });
+  window.visualViewport?.addEventListener("scroll", requestUpdate, { passive: true });
   document.addEventListener("toggle", () => {
     // Follow the dropdown's rim during its short opening scale transition.
     if (!reduced.matches) followUntil = performance.now() + 200;

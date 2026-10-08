@@ -19,9 +19,8 @@ import night from "../assets/landscape/night.png";
 
 <style>
   .landscape { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--color-paper); }
-  .landscape :global(.landscape-glass-canvas) { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; }
-  .landscape[data-glass-scene] :global(.landscape-glass-canvas) { visibility: visible; }
-  .landscape[data-glass-scene] > :global(:not(canvas)) { visibility: hidden; }
+  /* Shared GPU scratchpad, not a fixed overlay of scrolling card outlines. */
+  .landscape :global(.landscape-glass-canvas) { display: none; }
   .landscape-image, .landscape-light, .landscape-veil { position: absolute; inset: 0; }
   .landscape-image :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 58% center; }
   .landscape-night { opacity: 0; }

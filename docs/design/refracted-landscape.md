@@ -106,7 +106,7 @@ Create the NIGHT companion background for this personal portfolio landscape. Pre
 
 技术依据：[Chromium 的主线程与合成滚动架构](https://developer.chrome.com/docs/chromium/renderingng-architecture)、[MDN：backdrop-filter 与 SVG 滤镜](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/backdrop-filter)。不同引擎的 backdrop URL 边界沿用固定引擎的实现说明，不把仅有 CSS 语法支持误判为实际折射支持。
 
-## 2026-10-06 · iPhone 共享山水光学层与实时导航（当前方案）
+## 2026-10-06 · iPhone 共享山水光学层与实时导航（已由 2026-10-08 的边缘附着方案替代）
 
 用户确认桌面已经正常，但 iPhone 全部同类卡片仍有切割/卡顿，同时要求顶栏采样实时背景。原因是上一轮只让 Chromium 走原生路径，WebKit 的卡片仍逐帧移动各自的全屏山水副本；iOS 地址栏伸缩还会改变背景取景。没有把手机窗口尺寸的 Chrome 检查当作 Safari 渲染验证。
 
@@ -122,3 +122,16 @@ Create the NIGHT companion background for this personal portfolio landscape. Pre
 验证使用本机 Chrome 的真实像素检查，以及 iPhone UA/触控/DPR=3 下明确进入 WebKit 兼容代码路径的检查，不是 Safari 内核或 iPhone 硬件帧率验证。新回归先在旧实现失败（共享场景数 0、导航含静态副本），修复后可见只有一个场景、卡片及导航没有整屏副本，触控滚动时副本样式写入 0 次。查看日夜与手机菜单实际截图，无运行时/GL 异常；不承诺所有 iPhone 型号达到固定帧率。
 
 类型检查 0 错误 / 0 警告 / 0 提示，正式 6 页构建成功；只运行 7 项与此次修改有关的浏览器回归（约 7.8 秒）。另外模拟 WebGL 上下文丢失，场景恢复且导航保持可用；切换高对比时立即使用实色，不沿用原先 700ms 透明渐变。
+
+## 2026-10-08 · 手机滚动拖影修复（当前方案）
+
+之前的共享背景避免了整屏照片副本，但仍把移动卡片的折射轮廓绘制在固定画布上。Safari 原生滚动和主线程光学坐标更新不同步时，轮廓会留在旧位置。现在原始 CSS 山水始终显示，单一隐藏 WebGL 采样器仅生成四条透明光学边缘，并将这些窄画布附着在各自卡片内部；原生合成滚动直接带走卡片与边缘，不再依赖 JavaScript 对齐轮廓。
+
+- 日夜纹理共用、仅随真实尺寸或图片变化上传；只更新可见玻璃，内缘平滑融入真实背景，圆形透镜的对角弧面也被覆盖
+- GPU 只绘制边缘，卡片中心不复制照片；四条边缘绘制后才复制结果，避免每条边缘分别等待一次 GPU 绘制。静止时无持续循环，没有新运行时依赖
+- Chromium / 安卓 Chrome / 桌面原生 backdrop 路径保持不变；WebKit / Gecko 使用同一曲面模型。视觉语言一致，不声称不同浏览器的任意 DOM 折射能力完全相同
+- 顶栏和工作台共用修复，保留触摸反馈、日夜渐变、减少动态、高对比和 GPU 丢失后的原生透明降级；补齐 visualViewport 滚动通知
+- `tests/mobile-glass.mjs` 使用真正的 Playwright WebKit 26.5：旧实现先因边缘没有附着到卡片而失败，新实现通过延迟绘制时的滚动附着、实际像素折射、透明中心、320/390/844px 横竖屏、日夜与 GPU 丢失检查。另检查安卓 Chrome 触屏配置；不是实体 iPhone / 安卓硬件帧率保证
+- 同时通过既有桌面玻璃回归及工作台共用玻璃/紧凑顶栏检查。WebKit 本机 DPR=3 的 70 帧滚动采样，95 分位帧间隔 21ms，仅代表该测试环境
+
+技术依据：[WebKit 的异步滚动架构](https://trac.webkit.org/wiki/Scrolling)。重跑手机浏览器检查需安装对应 Playwright WebKit；网站自身不依赖 Playwright。
