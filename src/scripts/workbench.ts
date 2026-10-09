@@ -1,5 +1,6 @@
 import { createWorkbenchApi } from "../lib/workbench-api";
-import { createDraft, publicationFingerprint, type Collection, type Draft } from "../lib/workbench-content";
+import { createDraft, type Collection, type Draft, type PublicArticle } from "../lib/workbench-content";
+import { draftIdentity, filterDirectory, mergeDirectory } from "../lib/workbench-directory";
 import { animate } from "motion";
 import { initWorkbenchChrome } from "./workbench-chrome";
 import { initMarkdownEditor } from "./workbench-editor";
@@ -18,9 +19,12 @@ const status = element("save-status");
 const saveButton = element<HTMLButtonElement>("save-draft");
 const publishButton = element<HTMLButtonElement>("publish-draft");
 const deleteButton = element<HTMLButtonElement>("delete-draft");
+const unpublishButton = element<HTMLButtonElement>("unpublish-draft");
 const draftFilter = element<HTMLSelectElement>("draft-filter");
 let collection: Collection = "notes";
 let drafts: Draft[] = [];
+let articles: PublicArticle[] = [];
+let catalogReady = false;
 let current: Draft | null = null;
 let edited = 0;
 let saved = 0;
@@ -45,6 +49,10 @@ let previewModule: Promise<typeof import("../lib/workbench-preview")> | undefine
 let renderedSource = "";
 let renderedHTML = "";
 let renderedAt = 0;
+let deploymentKind: "publish" | "unpublish" = "publish";
+
+function currentArticle() { return current ? articles.find(article => `${article.collection}/${article.slug}` === draftIdentity(current!)) : undefined; }
+function currentIsPublic() { return Boolean(currentArticle() || (!catalogReady && current?.published_commit)); }
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "操作未完成，请稍后重试。";
@@ -54,10 +62,13 @@ function updateButtons() {
   const busy = uploading || publishing || deleting || loading || navigating;
   saveButton.disabled = !current || conflict || busy;
   publishButton.disabled = !current || conflict || busy || deploying;
-  publishButton.textContent = publishing ? "正在提交…" : deploying ? "部署中…" : current?.published_commit ? "更新到网站" : "发布到网站";
+  publishButton.textContent = publishing ? "正在提交…" : deploying ? "部署中…" : currentIsPublic() ? "更新到网站" : "发布到网站";
   publishButton.setAttribute("aria-busy", String(publishing || deploying));
-  deleteButton.disabled = !current || busy || deploying;
+  deleteButton.disabled = !current || busy || deploying || currentIsPublic() || Boolean(current?.publication_pending) || Boolean(current?.unpublished_commit && !current.unpublished_at);
+  deleteButton.title = currentIsPublic() ? "请先从网站撤下，编辑源会保留" : "删除私密编辑源，不清除已公开的附件或历史";
   deleteButton.textContent = deleting ? "正在删除…" : "删除草稿";
+  unpublishButton.disabled = !currentArticle() || busy || deploying;
+  element<HTMLButtonElement>("refresh-directory").disabled = busy;
   element<HTMLButtonElement>("check-publication").disabled = busy || checkingPublication;
   element<HTMLButtonElement>("new-draft").disabled = busy;
   collectionSelect.disabled = busy;
@@ -76,29 +87,44 @@ function updateSlugLock() {
 
 function mergePublicationFields(result: Draft) {
   if (!current || current.id !== result.id) return;
-  current = { ...current, published_commit: result.published_commit, published_url: result.published_url, published_slug: result.published_slug, published_collection: result.published_collection, published_at: result.published_at, published_revision: result.published_revision, published_fingerprint: result.published_fingerprint };
+  current = { ...current, published_commit: result.published_commit, published_url: result.published_url, published_slug: result.published_slug, published_collection: result.published_collection, published_at: result.published_at, published_revision: result.published_revision, published_fingerprint: result.published_fingerprint, unpublished_commit: result.unpublished_commit, unpublished_at: result.unpublished_at, publication_operation: result.publication_operation, publication_pending: result.publication_pending };
   updateSlugLock();
 }
 
 function renderDirectory() {
   const list = element("draft-list");
   list.replaceChildren();
-  const visible = drafts.filter(draft => draftFilter.value === "all" || (draftFilter.value === "published" ? Boolean(draft.published_commit) : !draft.published_commit));
-  element("directory-state").textContent = drafts.length ? `显示 ${visible.length} / ${drafts.length} 篇文章` : "还没有草稿。新建一篇开始写作。";
-  for (const draft of visible) {
+  const entries = mergeDirectory(drafts, articles, catalogReady);
+  const visible = filterDirectory(entries, draftFilter.value);
+  element("directory-state").textContent = entries.length ? visible.length ? `显示 ${visible.length} / ${entries.length} 篇文章` : draftFilter.value === "published" ? "当前栏目没有已发布文章" : "当前栏目没有未发布草稿" : "还没有文章。新建一篇开始写作。";
+  for (const entry of visible) {
+    const { draft, article } = entry;
     const li = document.createElement("li");
     const button = document.createElement("button");
     button.type = "button";
     button.className = "draft-item";
-    button.setAttribute("aria-current", String(current?.id === draft.id));
+    button.setAttribute("aria-current", String(Boolean(draft && current?.id === draft.id)));
     const title = document.createElement("span");
-    title.textContent = String(draft.metadata.title || "未命名草稿");
+    title.textContent = String(draft?.metadata.title || article?.title || "未命名草稿");
     const detail = document.createElement("small");
-    detail.textContent = draft.published_commit ? "已提交发布 · 点击继续编辑" : draft.published_slug ? "链接已固定 · 私密草稿" : "私密草稿";
+    detail.textContent = entry.published ? draft ? "已发布 · 点击继续编辑" : "已发布 · 点击恢复编辑源" : draft?.unpublished_commit ? draft.unpublished_at ? "已撤下 · 私密编辑源保留" : "撤下待确认 · 私密编辑源保留" : "私密草稿";
+    if (article?.recoverable === false && !draft) detail.textContent = article.warning || "此文章格式暂不支持恢复，请在 GitHub 编辑";
     button.append(title, detail);
     button.addEventListener("click", async () => {
-      if (current?.id === draft.id || loading || uploading || publishing || deleting) return;
-      if (await guardChanges()) selectDraft(draft);
+      if ((draft && current?.id === draft.id) || loading || uploading || publishing || deleting) return;
+      if (!(await guardChanges())) return;
+      if (draft && (!article || (draft.published_commit && !draft.unpublished_commit))) { selectDraft(draft); return; }
+      if (!article) return;
+      if (article.recoverable === false) { errorBox.textContent = article.warning || "此文章格式暂不支持恢复，请在 GitHub 编辑"; return; }
+      loading = true; updateButtons();
+      element("directory-state").textContent = "正在恢复私密编辑源，原公开链接保持不变…";
+      try {
+        const restored = await api.recoverArticle(article);
+        const index = drafts.findIndex(item => item.id === restored.id);
+        if (index < 0) drafts.unshift(restored); else drafts[index] = restored;
+        selectDraft(restored);
+      } catch (error) { errorBox.textContent = message(error); renderDirectory(); }
+      finally { loading = false; updateButtons(); }
     });
     li.append(button);
     list.append(li);
@@ -150,10 +176,12 @@ function selectDraft(draft: Draft) {
   element("publish-warning").hidden = !warning;
   element("published-link").hidden = true;
   publishGeneration++;
-  if (draft.published_commit) {
+  if (draft.unpublished_commit && !currentIsPublic()) {
+    void pollPublication(draft.unpublished_commit, publishGeneration, "", "unpublish");
+  } else if (draft.published_commit && currentIsPublic()) {
     element("publish-status").textContent = "草稿有公开版本，正在确认最近一次发布的部署状态…";
     void pollPublication(draft.published_commit, publishGeneration, draft.published_url ?? "");
-  } else if (draft.published_slug) { element("publish-status").dataset.state = "unknown"; element("publish-status").textContent = "此草稿已开始发布，链接已固定；当前发布状态尚未确认。"; }
+  } else if (currentIsPublic()) { element("publish-status").textContent = "网站有公开版本，保存只更新私密编辑源；点击更新到网站才会公开修改"; }
   renderDirectory();
   refreshPreview();
   showView("editor");
@@ -236,12 +264,28 @@ async function guardChanges() {
 async function loadDirectory() {
   loading = true;
   updateButtons();
-  element("directory-state").textContent = "正在读取私密草稿…";
+  element("directory-state").textContent = "正在读取草稿和公开文章…";
   try {
-    drafts = await api.listDrafts(collection);
+    const [privateResult, publicResult] = await Promise.allSettled([api.listDrafts(collection), api.listPublicArticles(collection)]);
+    if (privateResult.status === "rejected") throw privateResult.reason;
+    drafts = privateResult.value;
+    drafts = await Promise.all(drafts.map(async draft => {
+      if (!draft.publication_pending && !(draft.unpublished_commit && !draft.unpublished_at)) return draft;
+      try {
+        const result = await api.reconcilePublication(draft);
+        if (result.warning) publicationWarnings.set(draft.id, result.warning);
+        else publicationWarnings.delete(draft.id);
+        if (result.draft) { mergePublicationFields(result.draft); return result.draft; }
+      } catch (error) { publicationWarnings.set(draft.id, `发布状态暂未恢复：${message(error)}`); }
+      return draft;
+    }));
+    catalogReady = publicResult.status === "fulfilled";
+    articles = catalogReady && publicResult.status === "fulfilled" ? publicResult.value : [];
+    if (publicResult.status === "rejected") errorBox.textContent = `公开目录未读取成功：${message(publicResult.reason)}。私密草稿仍可使用，点击刷新目录重试。`;
     renderDirectory();
   } catch (error) {
     drafts = [];
+    articles = []; catalogReady = false;
     element("draft-list").replaceChildren();
     element("directory-state").textContent = "读取失败。重新选择栏目可重试。";
     errorBox.textContent = message(error);
@@ -455,11 +499,49 @@ collectionSelect.addEventListener("change", async () => {
   await loadDirectory();
 });
 draftFilter.addEventListener("change", renderDirectory);
+element<HTMLButtonElement>("refresh-directory").addEventListener("click", async () => {
+  if (!(await guardChanges())) return;
+  errorBox.textContent = "";
+  await loadDirectory();
+});
+
+unpublishButton.addEventListener("click", async () => {
+  if (!current || !currentArticle() || deleting || publishing || deploying || uploading || loading || navigating || conflict) return;
+  if (!window.confirm(`从网站撤下「${String(current.metadata.title || "未命名文章")}」？\n部署完成后，访客将无法打开此公开页面。当前文字会先保存为私密编辑源，可再次发布；已公开的附件和 Git 历史不会清除。`)) return;
+  readForm();
+  publishing = true; updateButtons(); errorBox.textContent = "";
+  element("publish-status").textContent = "正在保存私密编辑源并提交撤下…";
+  try {
+    await saveChanges();
+    if (edited !== saved || conflict) throw new Error("当前修改尚未保存，未撤下文章，请先处理保存错误");
+    let article = currentArticle();
+    if (!article?.sha) {
+      articles = await api.listPublicArticles(collection); catalogReady = true;
+      article = currentArticle();
+    }
+    if (!article?.sha) throw new Error("公开版本已变化，请刷新目录后重试");
+    const snapshot = structuredClone(current);
+    const result = await api.unpublishDraft(snapshot, article.sha);
+    // Preserve local text even if the bookkeeping response contains a newer row.
+    current = { ...snapshot, published_commit: null, published_fingerprint: null, published_revision: null, unpublished_commit: result.commit, unpublished_at: null };
+    const index = drafts.findIndex(draft => draft.id === current!.id);
+    if (index < 0) drafts.unshift(structuredClone(current)); else drafts[index] = structuredClone(current);
+    articles = articles.filter(item => `${item.collection}/${item.slug}` !== draftIdentity(snapshot));
+    element("published-link").hidden = true;
+    element("publish-warning").textContent = result.warning || "";
+    element("publish-warning").hidden = !result.warning;
+    renderDirectory();
+    void pollPublication(result.commit, ++publishGeneration, "", "unpublish");
+  } catch (error) {
+    errorBox.textContent = message(error);
+    element("publish-status").textContent = "撤下未确认，私密编辑源仍保留；请刷新目录或查看部署记录再操作。";
+  } finally { publishing = false; updateButtons(); }
+});
 
 deleteButton.addEventListener("click", async () => {
   if (!current || deleting || publishing || deploying || uploading || loading || navigating) return;
-  const published = Boolean(current.published_commit || current.published_slug);
-  const warning = published ? "已经公开的文章和图片不会被撤下；删除这份私密草稿后，将无法再从工作台编辑该文章。" : "这份私密草稿将永久删除，尚未保存的修改也会丢失。";
+  if (currentIsPublic() || current.publication_pending || (current.unpublished_commit && !current.unpublished_at)) return;
+  const warning = "这份私密草稿将永久删除，尚未保存的修改也会丢失。已公开的附件和 Git 历史不会被清除。";
   if (!window.confirm(`删除「${String(current.metadata.title || "未命名草稿")}」？\n${warning}\n此操作不可撤销。`)) return;
   deleting = true;
   clearTimeout(saveTimer);
@@ -489,7 +571,7 @@ deleteButton.addEventListener("click", async () => {
     element("deployment-link").hidden = true;
     element("check-publication").hidden = true;
     element("preview").replaceChildren();
-    status.textContent = published ? "私密草稿已删除，公开文章仍保留" : "私密草稿已删除";
+    status.textContent = "私密草稿已删除";
     renderDirectory();
   } catch (error) {
     errorBox.textContent = message(error);
@@ -515,7 +597,9 @@ element<HTMLButtonElement>("reload-draft").addEventListener("click", async () =>
   if (latest) selectDraft(latest);
 });
 
-async function pollPublication(commit: string, generation: number, articleUrl: string) {
+async function pollPublication(commit: string, generation: number, articleUrl: string, kind: "publish" | "unpublish" = "publish") {
+  deploymentKind = kind;
+  element("publish-status").dataset.operation = kind;
   element("publish-status").dataset.state = "pending";
   deploying = true;
   checkingPublication = true;
@@ -529,16 +613,34 @@ async function pollPublication(commit: string, generation: number, articleUrl: s
     try {
       const result = await api.getPublishStatus(commit);
       if (generation !== publishGeneration) return;
+      if (result.draft) {
+        mergePublicationFields(result.draft);
+        const listed = drafts.find(draft => draft.id === result.draft!.id);
+        if (listed) Object.assign(listed, { ...result.draft, body: listed.body, metadata: listed.metadata, revision: listed.revision });
+        if (!result.warning) { publicationWarnings.delete(result.draft.id); element("publish-warning").hidden = true; }
+      }
       if (/^https?:\/\//i.test(result.url)) {
         const link = element<HTMLAnchorElement>("deployment-link");
         link.href = result.url;
         link.hidden = false;
       }
       if (result.state === "success") {
+        if (kind === "unpublish" && result.withdrawalConfirmed !== true) {
+          element("publish-status").dataset.state = "unknown";
+          element("publish-status").textContent = "撤下部署已完成，但私密状态尚未确认；编辑源仍保留，请重新检查进度后再删除草稿。";
+          return;
+        }
+        if (kind === "unpublish" && current?.unpublished_commit === commit) {
+          current.unpublished_at = new Date().toISOString();
+          current.publication_pending = false;
+          const listed = drafts.find(draft => draft.id === current!.id);
+          if (listed) { listed.unpublished_at = current.unpublished_at; listed.publication_pending = false; }
+          renderDirectory();
+        }
         element("publish-status").dataset.state = "success";
         terminal = true;
-        element("publish-status").textContent = "该次发布部署成功，公开版本已上线。";
-        if (articleUrl && /^https?:\/\//i.test(articleUrl)) {
+        element("publish-status").textContent = kind === "unpublish" ? "文章已从网站撤下，私密编辑源仍保留，可继续修改或重新发布。附件和 Git 历史未清除。" : "该次发布部署成功，公开版本已上线。";
+        if (kind === "publish" && articleUrl && /^https?:\/\//i.test(articleUrl)) {
           const link = element<HTMLAnchorElement>("published-link");
           const freshUrl = new URL(articleUrl);
           freshUrl.searchParams.set("published", commit.slice(0, 12));
@@ -547,9 +649,9 @@ async function pollPublication(commit: string, generation: number, articleUrl: s
         }
         return;
       }
-      if (result.state === "failure") { terminal = true; element("publish-status").dataset.state = "failure"; element("publish-status").textContent = "部署失败，私密草稿已保留。请打开部署记录，修复原因后在 GitHub 重新运行该任务；无需重复提交相同内容。"; return; }
+      if (result.state === "failure") { terminal = true; element("publish-status").dataset.state = "failure"; element("publish-status").textContent = "部署失败，私密编辑源已保留。请查看部署记录和最新任务；若此任务被新部署替代，重新检查进度。不要重新运行旧快照，以免回退网站。"; return; }
       element("publish-status").dataset.state = "pending";
-      element("publish-status").textContent = "发布提交已创建，网站正在部署。完成后会在这里显示公开页面链接。";
+      element("publish-status").textContent = kind === "unpublish" ? "撤下提交已创建，网站正在部署；完成后才确认公开页面已移除，私密编辑源仍保留。" : "发布提交已创建，网站正在部署。完成后会在这里显示公开页面链接。";
     } catch (error) {
       element("publish-status").dataset.state = "unknown";
       element("publish-status").textContent = "发布提交已创建，暂时无法读取部署进度，正在重试…";
@@ -562,9 +664,10 @@ async function pollPublication(commit: string, generation: number, articleUrl: s
   }
 }
 element<HTMLButtonElement>("check-publication").addEventListener("click", () => {
-  if (!current?.published_commit || checkingPublication || publishing || deleting || loading || navigating) return;
+  const commit = deploymentKind === "unpublish" ? current?.unpublished_commit : current?.published_commit;
+  if (!commit || checkingPublication || publishing || deleting || loading || navigating) return;
   element("publish-status").textContent = "正在重新确认部署进度…";
-  void pollPublication(current.published_commit, ++publishGeneration, current.published_url ?? "");
+  void pollPublication(commit, ++publishGeneration, deploymentKind === "publish" ? current?.published_url ?? "" : "", deploymentKind);
 });
 
 publishButton.addEventListener("click", async () => {
@@ -589,25 +692,16 @@ publishButton.addEventListener("click", async () => {
   try {
     await saveChanges();
     if (edited !== saved || conflict) throw new Error("草稿尚未保存成功，未提交发布。请先处理保存错误。");
-    const unchanged = current.published_commit && (current.published_fingerprint
-      ? current.published_fingerprint === await publicationFingerprint(current)
-      : current.published_revision === current.revision);
-    if (unchanged) {
-      element("publish-status").dataset.state = previousPublicationState;
-      element("publish-warning").textContent = "内容未变化，已经提交过这份公开版本，无需重复发布。修改后再更新即可；若部署失败，请在部署记录中重新运行任务。";
-      element("publish-warning").hidden = false;
-      element("publish-status").textContent = "没有创建重复发布提交，原公开链接保持不变。";
-      return;
-    }
     element("publish-status").textContent = "正在提交发布…";
     publishRequested = true;
     const result = await api.publishDraft(structuredClone(current));
     if (result.warning) publicationWarnings.set(current.id, result.warning); else publicationWarnings.delete(current.id);
-    element("publish-warning").textContent = result.warning ?? (result.duplicate ? "内容未变化，沿用已有发布，没有创建重复文章。" : "");
+    element("publish-warning").textContent = result.warning ?? (result.duplicate ? "已核对网站源文件，内容未变化，沿用已有发布，没有创建重复文章。" : "");
     element("publish-warning").hidden = !result.warning && !result.duplicate;
-    current = { ...current, published_commit: result.commit, published_url: result.url, published_slug: current.slug, published_collection: current.collection, published_revision: current.revision, published_fingerprint: result.fingerprint };
+    current = { ...current, published_commit: result.commit, published_url: result.url, published_slug: current.slug, published_collection: current.collection, published_revision: current.revision, published_fingerprint: result.fingerprint, unpublished_commit: null, unpublished_at: null };
+    if (!currentArticle()) articles.push({ collection: current.collection, slug: current.slug, title: String(current.metadata.title), sha: "", url: result.url, commit: result.commit });
     const listed = drafts.find(draft => draft.id === current?.id);
-    if (listed) { listed.published_commit = result.commit; listed.published_url = result.url; listed.published_slug = current.slug; listed.published_collection = current.collection; listed.published_revision = current.revision; listed.published_fingerprint = result.fingerprint; }
+    if (listed) { listed.published_commit = result.commit; listed.published_url = result.url; listed.published_slug = current.slug; listed.published_collection = current.collection; listed.published_revision = current.revision; listed.published_fingerprint = result.fingerprint; listed.unpublished_commit = null; listed.unpublished_at = null; }
     updateSlugLock();
     element("publish-status").textContent = "发布提交已创建，等待网站部署。尚未确认上线。";
     element("published-link").hidden = true;
@@ -668,6 +762,7 @@ element<HTMLButtonElement>("sign-out").addEventListener("click", async () => {
     await api.signOut();
     current = null;
     drafts = [];
+    articles = []; catalogReady = false;
     saved = edited = 0;
     conflict = false;
     deploying = false;

@@ -109,7 +109,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   };
   type Strip = { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; x: number; y: number; width: number; height: number; row: number };
-  const maps = new Map<HTMLElement, { shape: string; texture: WebGLTexture; optics: HTMLElement; strips: Strip[]; scrolls: boolean; sampledScroll: number; opacity: number }>();
+  const maps = new Map<HTMLElement, { shape: string; sample: string; texture: WebGLTexture; optics: HTMLElement; strips: Strip[]; scrolls: boolean; sampledScroll: number; opacity: number }>();
   let size = "";
   let dayTexture: WebGLTexture | undefined;
   let nightTexture: WebGLTexture | undefined;
@@ -166,7 +166,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
 
   landscape.append(canvas);
   const renderer = {
-    render(lenses: LandscapeLens[]) {
+    render(lenses: LandscapeLens[], refresh = false) {
       if (stopped || !enabled) return;
       const width = landscape.clientWidth, height = landscape.clientHeight;
       const nextSize = `${width}|${height}|${day.currentSrc}|${night.currentSrc}`;
@@ -178,7 +178,8 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
         size = nextSize;
       }
       gl.uniform2f(locations.uSceneSize, width, height);
-      gl.uniform1f(locations.uTheme, Number(getComputedStyle(night.parentElement!).opacity));
+      const theme = Number(getComputedStyle(night.parentElement!).opacity);
+      gl.uniform1f(locations.uTheme, theme);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dayTexture!);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, nightTexture!);
       gl.disable(gl.BLEND);
@@ -215,8 +216,21 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
           lens.key.prepend(optics);
           const opacity = Number(getComputedStyle(optics).opacity);
           optics.style.setProperty("--glass-sample-opacity", String(opacity));
-          map = { shape, texture: texture(pixels), optics, strips, scrolls: lens.scrolls, sampledScroll: scrollY, opacity }; maps.set(lens.key, map);
+          map = { shape, sample: "", texture: texture(pixels), optics, strips, scrolls: lens.scrolls, sampledScroll: scrollY, opacity }; maps.set(lens.key, map);
         }
+        const sample = `${size}|${theme}|${lens.x}|${lens.y}|${lens.width}|${lens.height}|${lens.bend}`;
+        if (map.sampledScroll !== scrollY || !map.sample) {
+          map.sampledScroll = scrollY;
+          if (map.optics.style.opacity) map.optics.style.opacity = "";
+          if (scrollTimeline && map.scrolls) {
+            map.optics.dataset.scrollSampling = "true";
+            // Full strength through 24px of lag, gone by 72px; no idle redraw loop.
+            map.optics.style.animationRange = `${map.sampledScroll - 72}px ${map.sampledScroll + 72}px`;
+          }
+        }
+        // Fixed and sticky rims retain their pixels while the scene and bounds agree.
+        if (!refresh && map.sample === sample) continue;
+        map.sample = sample;
         for (const strip of map.strips) {
           strip.row = atlasHeight;
           atlasWidth = Math.max(atlasWidth, strip.width, strip.height);
@@ -224,11 +238,14 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
         }
         active.push({ lens, map });
       }
+      if (lenses.length && landscape.dataset.glassScene !== "refractive") landscape.dataset.glassScene = "refractive";
       if (!active.length) return;
       if (canvas.width < atlasWidth) canvas.width = atlasWidth;
       if (canvas.height < atlasHeight) canvas.height = Math.ceil(atlasHeight / 64) * 64;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(locations.uAtlasSize, canvas.width, canvas.height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(0, canvas.height - atlasHeight, atlasWidth, atlasHeight);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       for (const { lens, map } of active) {
         gl.bindTexture(gl.TEXTURE_2D, map.texture);
@@ -238,10 +255,10 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
           rect(strip, Math.ceil(lens.mapWidth * ratio), Math.ceil(lens.mapHeight * ratio));
         }
       }
-      if (staging.width !== canvas.width) staging.width = canvas.width;
-      if (staging.height !== canvas.height) staging.height = canvas.height;
-      stagingContext.clearRect(0, 0, staging.width, staging.height);
-      stagingContext.drawImage(canvas, 0, 0);
+      if (staging.width !== atlasWidth) staging.width = atlasWidth;
+      if (staging.height !== atlasHeight) staging.height = atlasHeight;
+      stagingContext.clearRect(0, 0, atlasWidth, atlasHeight);
+      stagingContext.drawImage(canvas, 0, 0, atlasWidth, atlasHeight, 0, 0, atlasWidth, atlasHeight);
       for (const { map } of active) {
         for (const strip of map.strips) {
           strip.context.clearRect(0, 0, strip.width, strip.height);
@@ -251,15 +268,7 @@ export async function createLandscapeGlass(landscape: HTMLElement, unavailable: 
             strip.context.resetTransform();
           } else strip.context.drawImage(staging, 0, strip.row, strip.width, strip.height, 0, 0, strip.width, strip.height);
         }
-        map.sampledScroll = scrollY;
-        map.optics.style.opacity = "";
-        if (scrollTimeline && map.scrolls) {
-          map.optics.dataset.scrollSampling = "true";
-          // Full strength through 24px of lag, gone by 72px; no idle redraw loop.
-          map.optics.style.animationRange = `${map.sampledScroll - 72}px ${map.sampledScroll + 72}px`;
-        }
       }
-      if (landscape.dataset.glassScene !== "refractive") landscape.dataset.glassScene = "refractive";
     },
     invalidateScroll() {
       if (!touch || scrollTimeline || stopped || !enabled) return;

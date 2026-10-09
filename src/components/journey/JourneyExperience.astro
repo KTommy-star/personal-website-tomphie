@@ -107,15 +107,18 @@ const base = import.meta.env.BASE_URL;
         }
       }
 
-      for (const chapter of chapters) chapter.dataset.active = String(chapter === active);
+      const rect = route.getBoundingClientRect();
+      const progress = String(calculateRouteProgress(rect.top, rect.bottom, window.innerHeight));
+      for (const chapter of chapters) {
+        const selected = String(chapter === active);
+        if (chapter.dataset.active !== selected) chapter.dataset.active = selected;
+      }
 
       const point = active.dataset.mapTarget ?? "dongguan";
-      map.dataset.activePoint = point;
-      caption.textContent = captions[point] ?? "当前坐标";
-
-      const rect = route.getBoundingClientRect();
-      const progress = calculateRouteProgress(rect.top, rect.bottom, window.innerHeight);
-      map.style.setProperty("--journey-progress", String(progress));
+      if (map.dataset.activePoint !== point) map.dataset.activePoint = point;
+      const label = captions[point] ?? "当前坐标";
+      if (caption.textContent !== label) caption.textContent = label;
+      if (map.style.getPropertyValue("--journey-progress") !== progress) map.style.setProperty("--journey-progress", progress);
     };
 
     const requestUpdate = () => {

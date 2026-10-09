@@ -1,5 +1,5 @@
 export { collections, createDraft, validatePublication, publicationFingerprint } from "../../supabase/functions/_shared/content";
-export type { Collection, Draft } from "../../supabase/functions/_shared/content";
+export type { Collection, Draft, PublicArticle } from "../../supabase/functions/_shared/content";
 
 export function assertPublicWorkbenchKey(key: string): void {
   let privileged = /^(sb_secret_|github_pat_|gh[pousr]_)/.test(key.trim());

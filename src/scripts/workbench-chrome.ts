@@ -50,7 +50,8 @@ export function initWorkbenchChrome(root: HTMLElement) {
     more.setAttribute("aria-expanded", String(open));
     const label = open ? "收起" : "更多";
     if (more.textContent !== label) more.textContent = label;
-    const publicationLabel = ({ success: "公开版本已上线", pending: "网站部署中", failure: "部署失败", unknown: "部署待确认" } as Record<string, string>)[publicationState] ?? "";
+    const withdrawal = publication.dataset.operation === "unpublish";
+    const publicationLabel = ({ success: withdrawal ? "公开文章已撤下" : "公开版本已上线", pending: "网站部署中", failure: "部署失败", unknown: "部署待确认" } as Record<string, string>)[publicationState] ?? "";
     compactPublication.hidden = !compact || open || !publicationLabel;
     if (compactPublication.textContent !== publicationLabel) compactPublication.textContent = publicationLabel;
     if (!compact) {

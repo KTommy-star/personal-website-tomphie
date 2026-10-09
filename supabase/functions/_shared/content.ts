@@ -2,6 +2,16 @@ import { getAssetType, isPrivateAssetReference } from "./assets.ts";
 export { uuidPattern, assetPattern } from "./assets.ts";
 export const collections = ["notes", "research", "projects"] as const;
 export type Collection = (typeof collections)[number];
+export interface PublicArticle {
+  collection: Collection;
+  slug: string;
+  title: string;
+  sha: string;
+  url: string;
+  commit?: string;
+  recoverable?: boolean;
+  warning?: string;
+}
 export interface Draft {
   id: string;
   collection: Collection;
@@ -17,6 +27,10 @@ export interface Draft {
   published_revision?: number | null;
   published_fingerprint?: string | null;
   published_at?: string | null;
+  unpublished_commit?: string | null;
+  unpublished_at?: string | null;
+  publication_operation?: string | null;
+  publication_pending?: boolean;
 }
 
 export function createDraft(collection: Collection): Draft {

@@ -9,16 +9,16 @@ const commit = "a".repeat(40);
 const image = `${owner}/${id}/33333333-3333-4333-8333-333333333333.webp`;
 const draft = { id, collection: "notes", slug: "first-note", metadata: { title: "真实记录", summary: "学习过程", topic: "AI", tags: [] }, body: "# 学习过程\n\n正文", revision: 3, published_commit: null };
 const request = (body: unknown, token = "user-token", origin = env.ALLOWED_ORIGINS) => new Request("https://project.supabase.co/functions/v1/publish-content", { method: "POST", headers: { "content-type": "application/json", origin, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
-const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: boolean; draft?: Record<string, unknown>; failRecord?: boolean; imageBytes?: Uint8Array; assets?: Record<string, { bytes: Uint8Array; mime?: string }>; publishedAssets?: { path: string; type: string; sha: string }[]; conclusion?: string; reservationConflict?: boolean } = {}) => {
+const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: boolean; draft?: Record<string, unknown>; failRecord?: boolean; emptyRecord?: boolean; publicMissing?: boolean; publicBody?: string; imageBytes?: Uint8Array; assets?: Record<string, { bytes: Uint8Array; mime?: string }>; publishedAssets?: { path: string; type: string; sha: string }[]; conclusion?: string; reservationConflict?: boolean } = {}) => {
   const calls: { url: string; init: RequestInit }[] = [];
   const fetcher = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input); calls.push({ url, init });
     if (url.endsWith("/auth/v1/user")) return Response.json({ id: owner, email: "owner@example.test" });
     if (url.endsWith("/rpc/is_workbench_owner")) return Response.json(options.isOwner !== false);
-    if (url.endsWith("/rpc/reserve_workbench_publication")) return options.reservationConflict ? Response.json({ code: "40001", message: "版本冲突" }, { status: 409 }) : Response.json({ ...draft, revision: options.revision ?? 3, published_slug: draft.slug, published_collection: draft.collection, ...options.draft });
+    if (url.endsWith("/rpc/reserve_workbench_publication")) return options.reservationConflict ? Response.json({ code: "40001", message: "版本冲突" }, { status: 409 }) : Response.json({ ...draft, revision: options.revision ?? 3, published_slug: draft.slug, published_collection: draft.collection, ...options.draft, publication_operation: "44444444-4444-4444-8444-444444444444", publication_pending: true });
     if (url.includes("/rest/v1/workbench_drafts?") && init.method === "PATCH") {
       if (options.failRecord) throw new TypeError("Failed to fetch");
-      return new Response(null, { status: 204 });
+      return Response.json(options.emptyRecord ? [] : [{ ...draft, ...JSON.parse(String(init.body)) }]);
     }
     if (url.includes("/rest/v1/workbench_drafts?")) return Response.json([{ ...draft, revision: options.revision ?? 3, ...options.draft }]);
     if (url.includes("/storage/v1/object/authenticated/")) {
@@ -26,9 +26,12 @@ const fixture = (options: { isOwner?: boolean; revision?: number; failGit?: bool
       return new Response((asset?.bytes ?? options.imageBytes ?? new TextEncoder().encode("RIFF0000WEBP")).buffer as ArrayBuffer, { headers: asset?.mime ? { "content-type": asset.mime } : {} });
     }
     if (url.includes("/actions/runs?")) return Response.json({ workflow_runs: options.conclusion ? [{ path: ".github/workflows/deploy.yml", status: "completed", conclusion: options.conclusion, html_url: "https://github.com/fixture/actions/runs/1" }] : [] });
+    if (url.endsWith(`/commits/${commit}`)) return Response.json({ commit: { message: "legacy publication" }, files: [] });
     if (options.failGit && url.includes("api.github.com")) return Response.json({ message: "permission denied" }, { status: 403 });
     if (url.endsWith("/git/ref/heads/main")) return Response.json({ object: { sha: "parent" } });
     if (url.endsWith("/git/commits/parent")) return Response.json({ tree: { sha: "old-tree" } });
+    if (url.includes("/contents/src/content/notes?ref=")) return Response.json(options.publicMissing ? [] : [{ name: "first-note.md", path: "src/content/notes/first-note.md", type: "file", sha: "b".repeat(40) }]);
+    if (url.endsWith(`/git/blobs/${"b".repeat(40)}`)) return Response.json({ encoding: "base64", content: Buffer.from(`---\ntitle: "真实记录"\nsummary: "学习过程"\ntopic: "AI"\ntags: []\nrelated: []\nvisibility: "public"\ndraft: false\n---\n\n${options.publicBody ?? draft.body}\n`).toString("base64") });
     if (url.endsWith("/git/trees/old-tree?recursive=1")) return Response.json({ tree: options.publishedAssets ?? [], truncated: false });
     if (url.endsWith("/git/blobs")) return Response.json({ sha: "blob" });
     if (url.endsWith("/git/trees")) return Response.json({ sha: "new-tree" });
@@ -106,7 +109,7 @@ describe("owner-only publication boundary", () => {
     const io = fixture({ draft: { published_commit: commit, published_revision: 3, published_slug: "first-note", published_collection: "notes" } });
     const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
     expect(await res.json()).toMatchObject({ duplicate: true, commit });
-    expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+    expect(io.calls.some(c => c.url.includes("api.github.com") && ["POST", "PATCH"].includes(c.init.method ?? ""))).toBe(false);
   });
   it("returns the existing release for identical content without another Git commit", async () => {
     const fingerprint = createHash("sha256").update(JSON.stringify({ collection: "notes", slug: "first-note", metadata: { title: "真实记录", summary: "学习过程", tags: [], related: [], topic: "AI" }, body: draft.body })).digest("hex");
@@ -114,7 +117,7 @@ describe("owner-only publication boundary", () => {
     const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ duplicate: true, commit, url: "https://ktommy-star.github.io/personal-website-tomphie/notes/first-note/" });
-    expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+    expect(io.calls.some(c => c.url.includes("api.github.com") && ["POST", "PATCH"].includes(c.init.method ?? ""))).toBe(false);
   });
   it("updates an edited published draft at the original path and records the content fingerprint", async () => {
     const io = fixture({ draft: { body: "修改后的正文", published_commit: commit, published_slug: "first-note", published_collection: "notes", published_fingerprint: "old-content" } });
@@ -154,7 +157,7 @@ describe("owner-only publication boundary", () => {
     expect(JSON.parse(String(io.calls.find(c => c.url.endsWith("/git/refs/heads/main"))!.init.body)).force).toBe(false);
     const reservation = io.calls.findIndex(c => c.url.endsWith("/rpc/reserve_workbench_publication"));
     expect(reservation).toBeGreaterThan(0);
-    expect(reservation).toBeLessThan(io.calls.findIndex(c => c.url.includes("api.github.com")));
+    expect(reservation).toBeLessThan(io.calls.findIndex(c => c.url.includes("api.github.com") && ["POST", "PATCH"].includes(c.init.method ?? "")));
   });
   it("reports a GitHub failure instead of falsely reporting a release", async () => {
     const io = fixture({ failGit: true }); const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
@@ -193,10 +196,26 @@ describe("owner-only publication boundary", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ commit, warning: expect.stringContaining("已提交") });
   });
-  it("stops before Git when another device edits the draft before publication reservation", async () => {
+  it("stops before Git writes when another device edits the draft before publication reservation", async () => {
     const io = fixture({ reservationConflict: true });
     const res = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
     expect(res.status).toBe(409);
-    expect(io.calls.some(c => c.url.includes("api.github.com"))).toBe(false);
+    expect(io.calls.some(c => c.url.includes("api.github.com") && ["POST", "PATCH"].includes(c.init.method ?? ""))).toBe(false);
+  });
+  it("republishes an absent article even when failed removal bookkeeping left the old fingerprint", async () => {
+    const io = fixture({ publicMissing: true, draft: { published_commit: commit, published_revision: 3, published_slug: "first-note", published_collection: "notes" } });
+    const response = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(response.status).toBe(200); expect(await response.json()).not.toHaveProperty("duplicate");
+    expect(io.calls.some(call => call.url.endsWith("/git/refs/heads/main") && call.init.method === "PATCH")).toBe(true);
+  });
+  it("does not suppress an update when the Git source differs from private bookkeeping", async () => {
+    const io = fixture({ publicBody: "在Git修改过的公开正文", draft: { published_commit: commit, published_revision: 3, published_slug: "first-note", published_collection: "notes" } });
+    const response = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(response.status).toBe(200); expect(await response.json()).not.toHaveProperty("duplicate");
+  });
+  it("does not report private bookkeeping as recorded when the database updates zero rows", async () => {
+    const io = fixture({ emptyRecord: true });
+    const response = await handlePublishRequest(request({ action: "publish", draftId: id, revision: 3 }), env, io.fetcher);
+    expect(response.status).toBe(200); expect(await response.json()).toHaveProperty("warning");
   });
 });

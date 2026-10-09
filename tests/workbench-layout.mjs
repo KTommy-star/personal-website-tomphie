@@ -31,7 +31,8 @@ async function workbench(width, options = {}) {
   const exp = Math.floor(Date.now() / 1000) + 3600;
   const token = [Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'), Buffer.from(JSON.stringify({ sub: owner, aud: 'authenticated', role: 'authenticated', exp })).toString('base64url'), 'fixture'].join('.');
   let draft = { id: '22222222-2222-4222-8222-222222222222', collection: 'notes', slug: 'layout-fixture', metadata: { title: '界面布局测试', summary: '这篇文章只存在于测试浏览器，不会上传', topic: 'AI', tags: [], related: [], publishedAt: '2026-10-07' }, body: '## 清晰的写作空间\n\n这是用于检查编辑与预览排版的正文', revision: 1, updated_at: '2026-10-07T00:00:00Z' };
-  if (options.published) draft = { ...draft, published_commit: 'a'.repeat(40), published_slug: 'layout-fixture', published_collection: 'notes', published_revision: 1, published_url: new URL('notes/layout-fixture/', base).href };
+  if (options.published || options.publicOnly) draft = { ...draft, published_commit: 'a'.repeat(40), published_slug: 'layout-fixture', published_collection: 'notes', published_revision: 1, published_url: new URL('notes/layout-fixture/', base).href };
+  let publicPresent = Boolean(options.published || options.publicOnly), recovered = false;
   let saves = 0;
   await page.route(/https:\/\/[^/]+\.supabase\.co\//, async route => {
     const request = route.request(); const path = new URL(request.url()).pathname;
@@ -39,13 +40,22 @@ async function workbench(width, options = {}) {
     if (path === '/auth/v1/token') data = { access_token: token, token_type: 'bearer', refresh_token: 'fixture-refresh', expires_in: 3600, expires_at: exp, user };
     else if (path === '/auth/v1/user') data = user;
     else if (path === '/rest/v1/rpc/is_workbench_owner') data = true;
-    else if (path === '/rest/v1/workbench_drafts') data = [draft];
+    else if (path === '/rest/v1/workbench_drafts') data = options.publicOnly && !recovered ? [] : [draft];
     else if (path === '/rest/v1/rpc/save_workbench_draft') {
       const body = request.postDataJSON();
       if (options.failSave) { status = 503; data = { message: '暂时无法保存', code: 'unavailable' }; }
       else { draft = { ...draft, body: body.draft_body, metadata: body.draft_metadata, revision: draft.revision + 1 }; saves++; data = draft; }
     } else if (path === '/auth/v1/logout') data = {};
-    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'status') data = { state: options.publicationState ?? 'success', url: 'https://github.com/fixture/actions/runs/1' };
+    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'status') data = { state: options.publicationState ?? 'success', url: 'https://github.com/fixture/actions/runs/1', ...(draft.unpublished_commit ? { withdrawalConfirmed: true } : {}) };
+    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'catalog') data = { articles: publicPresent ? [{ collection: 'notes', slug: draft.slug, title: draft.metadata.title, sha: 'b'.repeat(40), url: draft.published_url, commit: draft.published_commit }] : [] };
+    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'recover') { recovered = true; data = { draft }; }
+    else if (path === '/functions/v1/publish-content' && request.postDataJSON().action === 'unpublish') {
+      assert.equal(request.postDataJSON().sha, 'b'.repeat(40));
+      assert.equal(request.postDataJSON().draftId, draft.id);
+      publicPresent = false;
+      draft = { ...draft, published_commit: null, unpublished_commit: 'c'.repeat(40), unpublished_at: null };
+      data = { commit: draft.unpublished_commit, url: draft.published_url, draft };
+    }
     else { await route.abort(); return; }
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
   });
@@ -54,7 +64,8 @@ async function workbench(width, options = {}) {
   await page.waitForFunction(() => !document.querySelector('#login-form button').disabled);
   await page.locator('#account').fill('tomphie'); await page.locator('#password').fill('fixture-only');
   await page.locator('#login-form button').click();
-  await page.locator('#workspace').waitFor({ state: 'visible' });
+  try { await page.locator('#workspace').waitFor({ state: 'visible', timeout: 5000 }); }
+  catch (error) { throw new Error(`Workbench login fixture: ${await page.locator('#login-error').innerText()}`, { cause: error }); }
   if (width <= 800) await page.getByRole('button', { name: '草稿目录', exact: true }).click();
   await page.locator('.draft-item').click();
   await page.locator('#draft-form').waitFor({ state: 'visible' });
@@ -71,6 +82,31 @@ test('public note filters keep their native semantics with aligned count and ins
   });
   assert.equal(layout.appearance, 'none'); assert(layout.padding >= 40); assert(layout.image.includes('data:image/svg+xml'));
   assert(layout.alignment <= 2, JSON.stringify(layout)); assert(layout.gap >= 12);
+  await page.close();
+});
+
+test('public-only articles recover their private editor and can be withdrawn without losing writing', async () => {
+  const { page } = await workbench(390, { publicOnly: true });
+  const original = await page.locator('#body').inputValue();
+  assert.equal(await page.locator('#slug').getAttribute('readonly'), '');
+  await page.getByRole('button', { name: '草稿目录', exact: true }).click();
+  await page.locator('#draft-filter').selectOption('drafts');
+  assert.equal(await page.locator('.draft-item').count(), 0);
+  assert.match(await page.locator('#directory-state').innerText(), /没有未发布草稿/);
+  await page.locator('#draft-filter').selectOption('published');
+  assert.equal(await page.locator('.draft-item').count(), 1);
+  await page.getByRole('button', { name: '编辑', exact: true }).click();
+  assert.equal(await page.locator('#delete-draft').isDisabled(), true);
+  if (!(await page.locator('#unpublish-draft').isVisible())) await page.locator('#workbench-more').click();
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator('#unpublish-draft').click();
+  assert.equal(await page.locator('#delete-draft').isDisabled(), true);
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#unpublish-draft').click();
+  await page.waitForFunction(() => document.querySelector('#publish-status').textContent.includes('已从网站撤下'));
+  assert.equal(await page.locator('#body').inputValue(), original);
+  assert.equal(await page.locator('#delete-draft').isDisabled(), false);
+  assert.equal(await page.locator('#published-link').isVisible(), false);
   await page.close();
 });
 

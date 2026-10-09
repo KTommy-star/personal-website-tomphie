@@ -27,6 +27,8 @@ if (landscape) {
     visible: boolean;
     bend: number;
     bezel: number;
+    geometry?: { width: number; height: number; radius: number };
+    rect?: DOMRect;
   };
   const surfaces: Surface[] = [];
   let frame = 0;
@@ -42,28 +44,36 @@ if (landscape) {
     // Read every active box before writing styles; don't force layout per card.
     const following = performance.now() < followUntil;
     const measurements = surfaces.filter(surface => surface.visible &&
-      (surface.scrolls || (!surface.native && following) || geometryChanged || !surface.lens)).map(surface => {
+      (surface.gpu || (!surface.native && following) || geometryChanged || !surface.lens)).map(surface => {
       const { element, portrait } = surface;
-      const width = surface.native || surface.gpu ? element.offsetWidth : element.clientWidth;
-      const height = surface.native || surface.gpu ? element.offsetHeight : element.clientHeight;
-      const radius = Math.min(parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0, width / 2, height / 2);
-      const rect = surface.scene || surface.gpu ? element.getBoundingClientRect() : null;
+      if (!surface.geometry || geometryChanged) {
+        const width = surface.native || surface.gpu ? element.offsetWidth : element.clientWidth;
+        const height = surface.native || surface.gpu ? element.offsetHeight : element.clientHeight;
+        const radius = Math.min(parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0, width / 2, height / 2);
+        surface.geometry = { width, height, radius };
+      }
+      const { width, height, radius } = surface.geometry;
+      if ((surface.scene || surface.gpu) && (surface.scrolls || following || geometryChanged || !surface.rect)) {
+        surface.rect = element.getBoundingClientRect();
+      }
+      const rect = surface.rect ?? null;
       const imageRect = portrait?.getBoundingClientRect();
-      const scaleX = rect ? rect.width / element.offsetWidth : 1;
-      const scaleY = rect ? rect.height / element.offsetHeight : 1;
+      const scaleX = rect ? rect.width / width : 1;
+      const scaleY = rect ? rect.height / height : 1;
       return { surface, width, height, radius, rect,
         sceneWidth: `${(imageRect?.width ?? innerWidth) / scaleX}px`,
         sceneHeight: `${(imageRect?.height ?? innerHeight) / scaleY}px`,
         sceneTransform: rect ? `translate(${((imageRect?.left ?? 0) - rect.left) / scaleX - element.clientLeft}px, ${((imageRect?.top ?? 0) - rect.top) / scaleY - element.clientTop}px)` : "",
       };
     });
+    const refresh = geometryChanged;
     geometryChanged = false;
     const lenses: LandscapeLens[] = [];
     for (const { surface, width, height, radius, rect, sceneWidth, sceneHeight, sceneTransform } of measurements) {
       if (!width || !height) continue;
       const { element, source, scene } = surface;
       if (surface.gpu && rect) {
-        lenses.push({ key: element, scrolls: !element.closest(".site-header, .workbench-header"), x: rect.left, y: rect.top, width: rect.width, height: rect.height,
+        lenses.push({ key: element, scrolls: surface.scrolls, x: rect.left, y: rect.top, width: rect.width, height: rect.height,
           mapWidth: width, mapHeight: height, radius, bezel: surface.bezel, specular,
           bend: surface.bend * (element.hasAttribute("data-glass-pressed") ? 1.18 : 1) });
         if (renderer && element.dataset.glass !== "refractive") element.dataset.glass = "refractive";
@@ -89,7 +99,7 @@ if (landscape) {
         surface.lens.update({ radius, bezel });
       }
     }
-    renderer?.render(lenses);
+    renderer?.render(lenses, refresh);
     if (performance.now() < Math.max(followUntil, themeUntil) && !reduced.matches) requestUpdate();
   };
   const requestUpdate = () => {
@@ -110,7 +120,10 @@ if (landscape) {
     }
     requestUpdate();
   }, { rootMargin: "120px" });
-  const requestGeometry = () => { geometryChanged = true; requestUpdate(); };
+  const requestGeometry = () => {
+    for (const surface of surfaces) { surface.geometry = undefined; surface.rect = undefined; }
+    geometryChanged = true; requestUpdate();
+  };
   const sizes = new ResizeObserver(requestGeometry);
 
   document.querySelectorAll<HTMLElement>(".glass").forEach(element => {
@@ -145,7 +158,7 @@ if (landscape) {
       element.prepend(optics);
     }
     const surface: Surface = {
-      element, source, portrait, scene, native, gpu, scrolls: gpu, visible: false,
+      element, source, portrait, scene, native, gpu, scrolls: gpu && !element.closest(".site-header, .workbench-header"), visible: false,
       bezel: touch && element.matches(".header-pane, .mobile-menu-pane") ? 10 : bezelWidth,
       bend: touch ? (element.matches(".header-pane, .mobile-menu-pane") ? 11 : 15)
         : element.matches(".header-pane, .mobile-menu-pane, .portrait-caption, .journey-filters") ? 16 : 21,

@@ -41,6 +41,7 @@ main{width:min(100% - 3rem,96rem);margin-inline:auto;padding:calc(6.25rem + env(
 .directory-field label,.directory-field select{margin:0}
 .directory-field label{line-height:1.5;color:var(--color-quiet)}
 .directory-panel select,.directory-panel #new-draft{border-radius:.75rem}
+#refresh-directory{width:100%;margin-top:.5rem;border-radius:.75rem;background:transparent;font-size:.8rem}
 #directory-state{margin:1rem 0 0;font-size:.8rem;line-height:1.6;font-variant-numeric:tabular-nums}
 .directory-panel ul{margin:.75rem 0 0}
 .directory-panel li{margin:0 0 .5rem}

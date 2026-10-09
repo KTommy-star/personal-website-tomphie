@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createHash, webcrypto } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const service = vi.hoisted(() => ({ configured: true, restoreSession: vi.fn(), listDrafts: vi.fn(), saveDraft: vi.fn(), publishDraft: vi.fn(), getPublishStatus: vi.fn(), deleteDraft: vi.fn(), signOut: vi.fn(), uploadAttachment: vi.fn(), previewAsset: vi.fn() }));
+const service = vi.hoisted(() => ({ configured: true, restoreSession: vi.fn(), listDrafts: vi.fn(), listPublicArticles: vi.fn(), recoverArticle: vi.fn(), unpublishDraft: vi.fn(), reconcilePublication: vi.fn(), saveDraft: vi.fn(), publishDraft: vi.fn(), getPublishStatus: vi.fn(), deleteDraft: vi.fn(), signOut: vi.fn(), uploadAttachment: vi.fn(), previewAsset: vi.fn() }));
 vi.mock("../src/lib/workbench-api", () => ({ createWorkbenchApi: () => service }));
 const id = "22222222-2222-4222-8222-222222222222";
 const commit = "a".repeat(40);
@@ -11,10 +11,12 @@ const url = "https://ktommy-star.github.io/personal-website-tomphie/notes/first-
 const draft = { id, collection: "notes", slug: "first-note", metadata: { title: "测试笔记", summary: "真实保存的摘要", topic: "AI", tags: [], related: [], publishedAt: "2026-10-07" }, body: "原有正文", revision: 3 };
 const fingerprint = createHash("sha256").update(JSON.stringify({ collection: "notes", slug: "first-note", metadata: { title: "测试笔记", summary: "真实保存的摘要", tags: [], related: [], publishedAt: "2026-10-07", topic: "AI" }, body: "原有正文" })).digest("hex");
 const published = { ...draft, published_commit: commit, published_url: url, published_slug: "first-note", published_collection: "notes", published_revision: 3, published_fingerprint: fingerprint };
+const article = { collection: "notes", slug: "first-note", title: "测试笔记", sha: "b".repeat(40), url, commit };
 const button = (id: string) => document.getElementById(id) as HTMLButtonElement;
 const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
 async function openDraft(value = draft) {
   service.listDrafts.mockResolvedValue([structuredClone(value)]);
+  if ("published_commit" in value && value.published_commit) service.listPublicArticles.mockResolvedValue([article]);
   await import("../src/scripts/workbench");
   await flush();
   (document.querySelector(".draft-item") as HTMLButtonElement).click();
@@ -26,6 +28,10 @@ beforeEach(() => {
   vi.stubGlobal("crypto", webcrypto);
   document.documentElement.innerHTML = readFileSync("src/pages/admin/index.astro", "utf8").split("---").slice(2).join("---");
   service.restoreSession.mockResolvedValue(true);
+  service.listPublicArticles.mockResolvedValue([]);
+  service.recoverArticle.mockResolvedValue(published);
+  service.reconcilePublication.mockResolvedValue({});
+  service.unpublishDraft.mockResolvedValue({ commit: "c".repeat(40), url, draft: { ...published, published_commit: null, published_fingerprint: null, unpublished_commit: "c".repeat(40), unpublished_at: "2026-10-09T00:00:00Z" } });
   service.saveDraft.mockImplementation(async value => ({ ...value, revision: value.revision + 1 }));
   service.publishDraft.mockResolvedValue({ commit, url, fingerprint });
   service.getPublishStatus.mockResolvedValue({ state: "success", url: "https://github.com/fixture/actions/runs/1" });
@@ -97,17 +103,18 @@ describe("workbench publication and deletion feedback", () => {
     expect(document.getElementById("publish-status")!.textContent).toContain("部署");
     button("publish-draft").click(); await flush();
     expect(service.publishDraft).toHaveBeenCalledTimes(1);
-    service.getPublishStatus.mockResolvedValue({ state: "success", url: "" });
+    service.getPublishStatus.mockResolvedValue({ state: "success", url: "", withdrawalConfirmed: true });
     await vi.advanceTimersByTimeAsync(10_000); await flush();
     expect(button("publish-draft").disabled).toBe(false);
     expect(document.getElementById("published-link")!.hidden).toBe(false);
     expect((document.getElementById("published-link") as HTMLAnchorElement).href).toContain("first-note/");
   });
-  it("reminds the author about identical published content without submitting it again", async () => {
+  it("asks the server to verify identical public content and reports that no duplicate was created", async () => {
+    service.publishDraft.mockResolvedValue({ commit, url, fingerprint, duplicate: true });
     await openDraft(published); await flush();
     button("publish-draft").click(); await flush();
     await vi.waitFor(() => expect(document.getElementById("publish-warning")!.textContent).toContain("未变化"));
-    expect(service.publishDraft).not.toHaveBeenCalled();
+    expect(service.publishDraft).toHaveBeenCalledTimes(1);
     expect(document.getElementById("publish-status")!.dataset.state).toBe("success");
   });
   it("keeps publication locked after a polling timeout until a terminal state is checked", async () => {
@@ -122,13 +129,14 @@ describe("workbench publication and deletion feedback", () => {
     expect(button("publish-draft").disabled).toBe(false);
   });
   it("directs a failed deployment to its run record instead of inviting duplicate publication", async () => {
+    service.publishDraft.mockResolvedValue({ commit, url, fingerprint, duplicate: true });
     service.getPublishStatus.mockResolvedValue({ state: "failure", url: "https://github.com/fixture/actions/runs/1" });
     await openDraft(published);
     expect(document.getElementById("publish-status")!.textContent).toContain("部署记录");
     expect((document.getElementById("deployment-link") as HTMLAnchorElement).href).toBe("https://github.com/fixture/actions/runs/1");
     button("publish-draft").click();
     await vi.waitFor(() => expect(document.getElementById("publish-warning")!.textContent).toContain("未变化"));
-    expect(service.publishDraft).not.toHaveBeenCalled();
+    expect(service.publishDraft).toHaveBeenCalledTimes(1);
   });
   it("keeps the published ID and URL while editing and submitting the next revision", async () => {
     await openDraft(published); await flush();
@@ -160,12 +168,86 @@ describe("workbench publication and deletion feedback", () => {
     expect(service.deleteDraft).not.toHaveBeenCalled();
     expect(document.querySelector(".draft-item")).not.toBeNull();
   });
-  it("warns that deleting a published draft leaves the public article and removes its editable source", async () => {
+  it("protects the editing source of an active public article and offers a separate withdrawal", async () => {
     await openDraft(published);
-    button("delete-draft").click(); await flush();
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("不会被撤下"));
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("无法再从工作台编辑"));
-    expect(service.deleteDraft).toHaveBeenCalledWith(expect.objectContaining({ id }));
+    expect(button("delete-draft").disabled).toBe(true);
+    expect(button("unpublish-draft").disabled).toBe(false);
+    button("delete-draft").click();
+    expect(service.deleteDraft).not.toHaveBeenCalled();
+  });
+  it("lists a public-only article, restores its editing source and preserves its URL", async () => {
+    service.listDrafts.mockResolvedValue([]);
+    service.listPublicArticles.mockResolvedValue([article]);
+    await import("../src/scripts/workbench"); await flush();
+    expect(document.querySelector(".draft-item")?.textContent).toContain("测试笔记");
+    (document.querySelector(".draft-item") as HTMLButtonElement).click(); await flush();
+    expect(service.recoverArticle).toHaveBeenCalledWith(article);
+    expect((document.getElementById("body") as HTMLTextAreaElement).value).toBe("原有正文");
+    expect((document.getElementById("slug") as HTMLInputElement).readOnly).toBe(true);
+    expect(button("publish-draft").textContent).toContain("更新");
+  });
+  it("filters private and public articles separately without duplicate rows", async () => {
+    const privateDraft = { ...draft, id: "44444444-4444-4444-8444-444444444444", slug: "private", metadata: { ...draft.metadata, title: "私密笔记" } };
+    service.listDrafts.mockResolvedValue([privateDraft, published]);
+    service.listPublicArticles.mockResolvedValue([article]);
+    await import("../src/scripts/workbench"); await flush();
+    const filter = document.getElementById("draft-filter") as HTMLSelectElement;
+    expect(document.querySelectorAll(".draft-item")).toHaveLength(2);
+    filter.value = "drafts"; filter.dispatchEvent(new Event("change"));
+    expect(document.querySelector(".draft-item")?.textContent).toContain("私密笔记");
+    expect(document.querySelectorAll(".draft-item")).toHaveLength(1);
+    filter.value = "published"; filter.dispatchEvent(new Event("change"));
+    expect(document.querySelector(".draft-item")?.textContent).toContain("测试笔记");
+    expect(document.querySelectorAll(".draft-item")).toHaveLength(1);
+  });
+  it("restores a failed publication record during directory refresh without losing private writing", async () => {
+    const pending = { ...draft, body: "仍然私密的修改", publication_pending: true, publication_operation: "55555555-5555-4555-8555-555555555555" };
+    service.listDrafts.mockResolvedValue([pending]);
+    service.listPublicArticles.mockResolvedValue([article]);
+    service.reconcilePublication.mockResolvedValue({ draft: { ...pending, published_commit: commit, published_slug: draft.slug, published_collection: draft.collection, published_url: url, publication_pending: false } });
+    await import("../src/scripts/workbench"); await flush();
+    expect(service.reconcilePublication).toHaveBeenCalledWith(expect.objectContaining({ id, publication_pending: true }));
+    (document.querySelector(".draft-item") as HTMLButtonElement).click(); await flush();
+    expect((document.getElementById("body") as HTMLTextAreaElement).value).toBe("仍然私密的修改");
+    expect(button("publish-draft").textContent).toContain("更新");
+    expect(button("delete-draft").disabled).toBe(true);
+  });
+  it("requires confirmation and waits for deployment before claiming withdrawal success", async () => {
+    await openDraft(published);
+    vi.mocked(window.confirm).mockReturnValue(false);
+    button("unpublish-draft").click(); await flush();
+    expect(service.unpublishDraft).not.toHaveBeenCalled();
+    vi.mocked(window.confirm).mockReturnValue(true);
+    service.getPublishStatus.mockResolvedValue({ state: "pending", url: "" });
+    button("unpublish-draft").click(); await flush();
+    expect(service.unpublishDraft).toHaveBeenCalledWith(expect.objectContaining({ id }), article.sha);
+    expect((document.getElementById("body") as HTMLTextAreaElement).value).toBe("原有正文");
+    expect(document.getElementById("publish-status")!.dataset.state).toBe("pending");
+    expect(button("delete-draft").disabled).toBe(true);
+    service.getPublishStatus.mockResolvedValue({ state: "success", url: "", withdrawalConfirmed: true });
+    await vi.advanceTimersByTimeAsync(10_000); await flush();
+    expect(document.getElementById("publish-status")!.textContent).toContain("已从网站撤下");
+    expect(document.getElementById("published-link")!.hidden).toBe(true);
+    expect(button("delete-draft").disabled).toBe(false);
+    expect(button("publish-draft").textContent).toContain("发布");
+  });
+  it("retains writing and public status when withdrawal fails", async () => {
+    await openDraft(published);
+    service.unpublishDraft.mockRejectedValue(new Error("公开版本已更新，请刷新目录"));
+    button("unpublish-draft").click(); await flush();
+    expect(document.getElementById("workbench-error")!.textContent).toContain("刷新目录");
+    expect((document.getElementById("body") as HTMLTextAreaElement).value).toBe("原有正文");
+    expect(button("delete-draft").disabled).toBe(true);
+  });
+  it("keeps the editing source protected until successful withdrawal bookkeeping is confirmed", async () => {
+    await openDraft(published);
+    service.getPublishStatus.mockResolvedValue({ state: "success", url: "", withdrawalConfirmed: false });
+    button("unpublish-draft").click(); await flush();
+    expect(document.getElementById("publish-status")!.textContent).toContain("私密状态尚未确认");
+    expect(button("delete-draft").disabled).toBe(true);
+    service.getPublishStatus.mockResolvedValue({ state: "success", url: "", withdrawalConfirmed: true });
+    button("check-publication").click(); await flush();
+    expect(button("delete-draft").disabled).toBe(false);
   });
   it("inserts an uploaded attachment at the selection and then saves its private reference", async () => {
     await openDraft();

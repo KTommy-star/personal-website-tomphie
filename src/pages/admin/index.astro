@@ -58,7 +58,7 @@ const home = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/`;
           <label for="password">密码</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required />
           <label class="check-label"><input id="remember" name="remember" type="checkbox" />记住这台设备</label>
-          <button class="primary" type="submit">登录工作台</button>
+          <button class="primary" type="submit" disabled>正在准备工作台…</button>
         </form>
         <p id="login-error" class="error" role="alert"></p>
         <noscript><p class="notice">请启用 JavaScript 以登录和编辑私密草稿。</p></noscript>
@@ -73,6 +73,7 @@ const home = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/`;
         <p id="publish-status" role="status" aria-live="polite"></p>
         <p id="publish-warning" class="notice" role="status" hidden></p>
         <div class="publication-actions">
+        <button id="unpublish-draft" class="danger" type="button" disabled>从网站撤下</button>
         <a id="published-link" target="_blank" rel="noopener noreferrer" hidden>查看公开页面</a>
         <a id="deployment-link" target="_blank" rel="noopener noreferrer" hidden>查看部署记录</a>
         <button id="check-publication" type="button" hidden>重新检查进度</button>
@@ -83,12 +84,13 @@ const home = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/`;
         <div class="mobile-tabs glass" data-glass-light aria-label="工作区视图"><button type="button" data-view="directory" aria-pressed="false">草稿目录</button><button type="button" data-view="editor" aria-pressed="true">编辑</button><button type="button" data-view="preview" aria-pressed="false">预览</button></div>
         <div class="workbench-grid" data-view="editor">
           <aside class="directory-panel glass" data-glass-light aria-labelledby="directory-title">
-            <h2 id="directory-title">草稿目录</h2>
+            <h2 id="directory-title">文章目录</h2>
             <div class="directory-field"><label for="collection">栏目</label><select class="select-control" id="collection"><option value="notes">笔记</option><option value="research">科研</option><option value="projects">项目</option></select></div>
             <div class="directory-field"><label for="draft-filter">显示</label><select class="select-control" id="draft-filter"><option value="all">全部文章</option><option value="drafts">未发布草稿</option><option value="published">已发布 · 可继续编辑</option></select></div>
             <button id="new-draft" type="button">＋ 新建草稿</button>
+            <button id="refresh-directory" type="button">刷新目录</button>
             <p id="directory-state" class="quiet" role="status">正在读取草稿…</p><ul id="draft-list"></ul>
-            <details class="directory-help"><summary>保存与发布说明</summary><p class="directory-note">已发布的文章也可以在这里修改，更新时保留原链接。保存只是私密草稿，不会自动公开；删除草稿不会撤下公开文章。</p></details>
+            <details class="directory-help"><summary>保存与发布说明</summary><p class="directory-note">已发布文章可直接继续编辑；缺少编辑源时，点击文章恢复，原链接不变。保存只更新私密草稿。要移除公开页面，请先「从网站撤下」，编辑源仍保留，再按需删除草稿；公开附件与 Git 历史不会清除。</p></details>
           </aside>
           <section class="editor-panel" aria-labelledby="editor-title">
             <h2 id="editor-title">编辑</h2>

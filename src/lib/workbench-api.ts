@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Collection, Draft } from "./workbench-content";
+import type { Collection, Draft, PublicArticle } from "./workbench-content";
 import { isPrivateAssetReference, uuidPattern, validateAssetBytes, validateAssetFilename } from "../../supabase/functions/_shared/assets";
 
 interface Config { url: string; key: string; username: string; email: string }
@@ -68,6 +68,20 @@ export function createWorkbenchApi(config: Config) {
       if (result.error) throw new Error("无法读取私密草稿，请检查连接或重新登录");
       return result.data as Draft[];
     },
+    async listPublicArticles(collection: Collection): Promise<PublicArticle[]> {
+      const result = await invoke({ action: "catalog", collection });
+      return result.articles;
+    },
+    async recoverArticle(article: PublicArticle): Promise<Draft> {
+      const result = await invoke({ action: "recover", collection: article.collection, slug: article.slug, sha: article.sha });
+      return result.draft;
+    },
+    async unpublishDraft(draft: Draft, sha: string): Promise<{ commit: string; url: string; warning?: string; draft?: Draft }> {
+      return invoke({ action: "unpublish", draftId: draft.id, revision: draft.revision, sha });
+    },
+    async reconcilePublication(draft: Draft): Promise<{ draft?: Draft; commit?: string; action?: "publish" | "unpublish"; withdrawalConfirmed?: boolean; warning?: string }> {
+      return invoke({ action: "reconcile", draftId: draft.id });
+    },
     async saveDraft(draft: Draft): Promise<Draft> {
       const result = await connection().rpc("save_workbench_draft", { draft_id: draft.id, draft_collection: draft.collection, draft_slug: draft.slug, draft_metadata: draft.metadata, draft_body: draft.body, expected_revision: draft.revision }).single();
       if (result.error) throw new Error(result.error.code === "40001" ? "版本冲突：另一台设备已修改，本机内容已保留，请先导出或复制后重新载入" : result.error.code === "23505" ? "该链接已存在，请换一个链接标识" : result.error.message);
@@ -109,7 +123,7 @@ export function createWorkbenchApi(config: Config) {
     async publishDraft(draft: Draft): Promise<{ commit: string; url: string; warning?: string; duplicate?: boolean; fingerprint?: string }> {
       return invoke({ action: "publish", draftId: draft.id, revision: draft.revision });
     },
-    async getPublishStatus(commit: string): Promise<{ state: "pending" | "success" | "failure"; url: string }> {
+    async getPublishStatus(commit: string): Promise<{ state: "pending" | "success" | "failure"; url: string; withdrawalConfirmed?: boolean; draft?: Draft; warning?: string }> {
       return invoke({ action: "status", commit });
     },
   };

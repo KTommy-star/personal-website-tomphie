@@ -131,10 +131,12 @@ import { withBase } from "../lib/paths";
       frame = 0;
       const rect = section.getBoundingClientRect();
       const value = calculateRouteProgress(rect.top, rect.bottom, window.innerHeight);
-      path.style.setProperty("--story-progress", String(value));
+      const progress = String(value);
+      if (path.style.getPropertyValue("--story-progress") !== progress) path.style.setProperty("--story-progress", progress);
 
       nodes.forEach((node, index) => {
-        node.dataset.storyActive = String(value >= index / Math.max(1, nodes.length - 1));
+        const active = String(value >= index / Math.max(1, nodes.length - 1));
+        if (node.dataset.storyActive !== active) node.dataset.storyActive = active;
       });
     };
 
